@@ -1,6 +1,10 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -10,7 +14,7 @@ import java.util.Date;
 import java.util.List;
 
 public class BukaBukuApp {
-    // Tema Warna
+    // Tema Warna (Didefinisikan persis tanpa perubahan warna)
     static final Color COLOR_PINK_SOFT = new Color(246, 226, 233);
     static final Color COLOR_PINK_SOLID = new Color(244, 114, 182);
     static final Color COLOR_CREAM = new Color(253, 251, 247);
@@ -45,7 +49,7 @@ public class BukaBukuApp {
         allBooks = new Book[] {
             new Book("Bumi", "Tere Liye", "Fiksi Petualangan", 92000, "assets/Bumi.jpeg", "Raib adalah remaja SMA yang memiliki kemampuan unik bisa menghilang hanya dengan menutup wajahnya dengan telapak tangan..."),
             new Book("Hujan", "Tere Liye", "Fiksi Ilmiah & Romansa", 90000, "assets/Hujan.jpeg", "Hujan karya Tere Liye menceritakan tentang Lail, seorang gadis yang kehilangan orang tuanya akibat bencana besar..."),
-            new Book("Si Anak Cahaya", "Tere Liye", "Fiksi Inspiratif", 85000, "assets/SiAnakCahaya.jpg", "novel si anak cahaya karya Tere Liye mengisahkan Nurmas (Nung), gadis kecil ceria dari pedalaman Sumatra..."),
+            new Book("Si Anak Cahaya", "Tere Liye", "Fiksi Inspiratif", 85000, "assets/SiAnakCahaya.jpg", "Mengisahkan Nurmas (Nung), seorang gadis kecil ceria dan tangguh dari pedalaman Sumatra..."),
             new Book("Guru Aini", "Andrea Hirata", "Fiksi Pendidikan", 92000, "assets/GuruAini.png", "Cerita berfokus pada Desi, seorang guru matematika idealis yang rela ditempatkan di pelosok demi mencari..."),
             new Book("Negeri 5 Menara", "A. Fuadi", "Fiksi Inspiratif", 110000, "assets/Negeri5Menara.jpg", "Alif adalah seorang remaja dari Maninjau yang terpaksa merantau ke Jawa untuk belajar di Pondok Madani..."),
             new Book("Loneliness Is My Best Friend", "Alvi Syahrin", "Self Improvement", 94000, "assets/LonelinessIsMyBestFriend.jpg", "Buku ini membahas fenomena kesepian yang sering dialami oleh orang dewasa, mulai dari perasaan tidak memiliki teman..."),
@@ -66,26 +70,26 @@ public class BukaBukuApp {
     static void createAndShowGUI() {
         JFrame frame = new JFrame("BukaBuku - Toko Buku Online");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(1200, 800);
+        frame.setSize(1240, 820);
         frame.setLayout(new BorderLayout());
         frame.getContentPane().setBackground(COLOR_CREAM);
 
         // 1. NAVBAR
         JPanel navbar = new JPanel(new BorderLayout());
         navbar.setBackground(COLOR_SAGE);
-        navbar.setBorder(new EmptyBorder(15, 40, 15, 40));
+        navbar.setBorder(new EmptyBorder(12, 35, 12, 35));
 
         JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         logoPanel.setOpaque(false);
         logoPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        JLabel logoLabel = loadIcon("assets/bukabuku.png", 45, 45);
+        JLabel logoLabel = loadIcon("assets/bukabuku.png", 40, 40);
         if (logoLabel.getIcon() == null) {
             logoLabel.setText("📖");
-            logoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+            logoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 28));
         }
         JLabel titleLabel = new JLabel("BukaBuku");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
         titleLabel.setForeground(TEXT_DARK);
         
         logoPanel.add(logoLabel);
@@ -96,7 +100,7 @@ public class BukaBukuApp {
             public void mouseClicked(MouseEvent e) { navigateTo("Katalog", frame); }
         });
 
-        JPanel menuPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
+        JPanel menuPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 5));
         menuPanel.setOpaque(false);
         
         navKatalog = createMenuLabel("Katalog", frame);
@@ -110,7 +114,11 @@ public class BukaBukuApp {
         menuPanel.add(navWishlist);
         menuPanel.add(navKeranjang);
         menuPanel.add(navRiwayat);
-        menuPanel.add(new JLabel(" | "));
+        
+        JLabel separator = new JLabel(" | ");
+        separator.setForeground(COLOR_DARK_GREEN);
+        menuPanel.add(separator);
+        
         menuPanel.add(navLogin);
         menuPanel.add(navDaftar);
         navbar.add(menuPanel, BorderLayout.EAST);
@@ -131,15 +139,14 @@ public class BukaBukuApp {
         frame.setVisible(true);
     }
 
-    // ================== HELPER FOOTER DINAMIS ==================
+    // ================== HELPER FOOTER MINIMALIS ==================
     static JPanel createFooter() {
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        // Mengubah warna dasar footer menjadi kuning air (COLOR_CREAM)
         footer.setBackground(COLOR_CREAM); 
-        footer.setBorder(new EmptyBorder(25, 0, 25, 0));
+        footer.setBorder(new EmptyBorder(10, 0, 10, 0));
         
-        JLabel footerLabel = new JLabel("© 2026 BukaBuku Kelompok 6");
-        footerLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        JLabel footerLabel = new JLabel("© 2026 BukaBuku Kelompok");
+        footerLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         footerLabel.setForeground(TEXT_MUTED);
         footer.add(footerLabel);
         return footer;
@@ -189,7 +196,7 @@ public class BukaBukuApp {
             cartListPanel.removeAll();
             if (cartData.isEmpty()) {
                 JLabel empty = new JLabel("Keranjang belanja masih kosong.");
-                empty.setFont(new Font("Segoe UI", Font.ITALIC, 16));
+                empty.setFont(new Font("Segoe UI", Font.ITALIC, 15));
                 empty.setForeground(TEXT_MUTED);
                 empty.setBorder(new EmptyBorder(10, 0, 0, 0));
                 cartListPanel.add(empty);
@@ -204,19 +211,49 @@ public class BukaBukuApp {
             riwayatListPanel.removeAll();
             if (orderHistory.isEmpty()) {
                 JLabel empty = new JLabel("Belum ada riwayat belanja.");
-                empty.setFont(new Font("Segoe UI", Font.ITALIC, 16));
+                empty.setFont(new Font("Segoe UI", Font.ITALIC, 15));
                 empty.setForeground(TEXT_MUTED);
                 empty.setBorder(new EmptyBorder(10, 0, 0, 0));
                 riwayatListPanel.add(empty);
             } else {
                 for (Order order : orderHistory) {
                     riwayatListPanel.add(createOrderCard(order));
-                    riwayatListPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+                    riwayatListPanel.add(Box.createRigidArea(new Dimension(0, 15)));
                 }
             }
             riwayatListPanel.add(Box.createVerticalGlue());
             riwayatListPanel.revalidate(); riwayatListPanel.repaint();
         }
+    }
+
+    static void filterKatalog(String query, JFrame frame) {
+        if (katalogGridPanel == null) return;
+        katalogGridPanel.removeAll();
+        
+        String keyword = query.trim().toLowerCase();
+        boolean foundAny = false;
+
+        for (Book b : allBooks) {
+            if (keyword.isEmpty() || 
+                b.title.toLowerCase().contains(keyword) || 
+                b.author.toLowerCase().contains(keyword) ||
+                b.category.toLowerCase().contains(keyword)) {
+                
+                katalogGridPanel.add(createBookCard(b, frame));
+                foundAny = true;
+            }
+        }
+
+        if (!foundAny) {
+            JLabel notFoundLabel = new JLabel("Tidak ada buku yang cocok dengan '" + query + "'");
+            notFoundLabel.setFont(new Font("Segoe UI", Font.ITALIC, 15));
+            notFoundLabel.setForeground(TEXT_MUTED);
+            notFoundLabel.setBorder(new EmptyBorder(20, 0, 20, 0));
+            katalogGridPanel.add(notFoundLabel);
+        }
+
+        katalogGridPanel.revalidate();
+        katalogGridPanel.repaint();
     }
 
     static void addToCart(Book book, JFrame frame) {
@@ -229,8 +266,32 @@ public class BukaBukuApp {
         }
         if (!found) cartData.add(new CartItem(book, 1));
         
-        new ModernAlertDialog(frame, "Sukses", book.title + " berhasil ditambahkan ke keranjang!").setVisible(true);
+        showNotificationToast(frame, "🛒 " + book.title + " berhasil masuk keranjang!");
         updateNavbar();
+    }
+
+    static void showNotificationToast(JFrame frame, String message) {
+        JWindow toast = new JWindow(frame);
+        
+        RoundedPanel panel = new RoundedPanel(18, COLOR_DARK_GREEN);
+        panel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 10));
+        
+        JLabel lblMsg = new JLabel(message);
+        lblMsg.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblMsg.setForeground(Color.WHITE);
+        panel.add(lblMsg);
+        
+        toast.setContentPane(panel);
+        toast.pack();
+        
+        Point loc = frame.getLocationOnScreen();
+        toast.setLocation(loc.x + frame.getWidth() - toast.getWidth() - 40, loc.y + 70);
+        
+        toast.setVisible(true);
+
+        Timer timer = new Timer(2000, e -> toast.dispose());
+        timer.setRepeats(false);
+        timer.start();
     }
 
     static void updateRingkasanBelanja() {
@@ -248,14 +309,14 @@ public class BukaBukuApp {
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
         container.setBackground(BG_MAIN);
-        container.setBorder(new EmptyBorder(30, 40, 0, 40));
+        container.setBorder(new EmptyBorder(25, 40, 0, 40));
 
         JLabel titleLabel = new JLabel("Riwayat Belanja");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
         titleLabel.setForeground(TEXT_DARK);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         container.add(titleLabel);
-        container.add(Box.createRigidArea(new Dimension(0, 20)));
+        container.add(Box.createRigidArea(new Dimension(0, 15)));
 
         riwayatListPanel = new JPanel();
         riwayatListPanel.setLayout(new BoxLayout(riwayatListPanel, BoxLayout.Y_AXIS));
@@ -276,25 +337,23 @@ public class BukaBukuApp {
         return scrollPane;
     }
 
-    // Komponen Card Riwayat Pesanan
     static JPanel createOrderCard(Order order) {
-        RoundedPanel card = new RoundedPanel(20, CARD_BG);
+        RoundedPanel card = new RoundedPanel(18, CARD_BG);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(20, 25, 20, 25));
+        card.setBorder(new EmptyBorder(18, 22, 18, 22));
         card.setMaximumSize(new Dimension(1000, Integer.MAX_VALUE));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
 
-        JPanel leftHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        JPanel leftHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         leftHeader.setOpaque(false);
         
-        // Perbaikan kotak merah error: Diganti menjadi Badge "INV" yang elegan
         RoundedPanel iconReceipt = new RoundedPanel(10, COLOR_PINK_SOFT, COLOR_PINK_SOLID);
-        iconReceipt.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        iconReceipt.setLayout(new FlowLayout(FlowLayout.CENTER, 8, 4));
         JLabel lblIcon = new JLabel("INV");
-        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblIcon.setForeground(COLOR_PINK_SOLID);
         iconReceipt.add(lblIcon);
         
@@ -303,11 +362,11 @@ public class BukaBukuApp {
         textHeader.setOpaque(false);
         
         JLabel lblOrder = new JLabel("Pesanan " + order.id);
-        lblOrder.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblOrder.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblOrder.setForeground(TEXT_DARK);
         
         JLabel lblDate = new JLabel(order.date);
-        lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblDate.setForeground(TEXT_MUTED);
         
         textHeader.add(lblOrder);
@@ -315,11 +374,10 @@ public class BukaBukuApp {
         leftHeader.add(iconReceipt);
         leftHeader.add(textHeader);
 
-        // Badge Status
-        RoundedPanel badge = new RoundedPanel(15, new Color(209, 250, 229)); 
-        badge.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 5));
+        RoundedPanel badge = new RoundedPanel(12, new Color(209, 250, 229)); 
+        badge.setLayout(new FlowLayout(FlowLayout.CENTER, 12, 4));
         JLabel lblStatus = new JLabel(order.status);
-        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblStatus.setForeground(new Color(16, 185, 129)); 
         badge.add(lblStatus);
 
@@ -327,19 +385,18 @@ public class BukaBukuApp {
         header.add(badge, BorderLayout.EAST);
 
         card.add(header);
-        card.add(Box.createRigidArea(new Dimension(0, 15)));
+        card.add(Box.createRigidArea(new Dimension(0, 12)));
         
         JSeparator sep1 = new JSeparator();
         sep1.setForeground(new Color(230, 230, 230));
         card.add(sep1);
-        card.add(Box.createRigidArea(new Dimension(0, 15)));
+        card.add(Box.createRigidArea(new Dimension(0, 12)));
 
-        // List Buku di Dalam Pesanan
         for (CartItem item : order.items) {
             JPanel itemPanel = new JPanel(new BorderLayout());
             itemPanel.setOpaque(false);
 
-            JPanel leftItem = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+            JPanel leftItem = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
             leftItem.setOpaque(false);
             
             JLabel imgLabel = loadIcon(item.book.imagePath, 45, 65);
@@ -355,37 +412,36 @@ public class BukaBukuApp {
             textItem.setOpaque(false);
             
             JLabel title = new JLabel(item.book.title);
-            title.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            title.setFont(new Font("Segoe UI", Font.BOLD, 14));
             title.setForeground(TEXT_DARK);
             
             JLabel qtyPrice = new JLabel(item.qty + " x Rp " + String.format("%,d", item.book.price).replace(',', '.'));
-            qtyPrice.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            qtyPrice.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             qtyPrice.setForeground(TEXT_MUTED);
             
             textItem.add(title);
-            textItem.add(Box.createRigidArea(new Dimension(0, 5)));
+            textItem.add(Box.createRigidArea(new Dimension(0, 3)));
             textItem.add(qtyPrice);
 
             leftItem.add(imgLabel);
             leftItem.add(textItem);
 
             JLabel itemSubtotal = new JLabel("Rp " + String.format("%,d", item.book.price * item.qty).replace(',', '.'));
-            itemSubtotal.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            itemSubtotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
             itemSubtotal.setForeground(TEXT_DARK);
 
             itemPanel.add(leftItem, BorderLayout.WEST);
             itemPanel.add(itemSubtotal, BorderLayout.EAST);
 
             card.add(itemPanel);
-            card.add(Box.createRigidArea(new Dimension(0, 15)));
+            card.add(Box.createRigidArea(new Dimension(0, 10)));
         }
 
         JSeparator sep2 = new JSeparator();
         sep2.setForeground(new Color(230, 230, 230));
         card.add(sep2);
-        card.add(Box.createRigidArea(new Dimension(0, 15)));
+        card.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // Footer Card: Total Pembayaran
         JPanel rightAlignPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         rightAlignPanel.setOpaque(false);
         
@@ -394,12 +450,12 @@ public class BukaBukuApp {
         innerRight.setOpaque(false);
         
         JLabel lblTotalText = new JLabel("TOTAL PEMBAYARAN");
-        lblTotalText.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblTotalText.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblTotalText.setForeground(TEXT_MUTED);
         lblTotalText.setAlignmentX(Component.RIGHT_ALIGNMENT);
 
         JLabel lblTotalSum = new JLabel("Rp " + String.format("%,d", order.total).replace(',', '.'));
-        lblTotalSum.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblTotalSum.setFont(new Font("Segoe UI", Font.BOLD, 20));
         lblTotalSum.setForeground(COLOR_PINK_SOLID);
         lblTotalSum.setAlignmentX(Component.RIGHT_ALIGNMENT);
 
@@ -416,18 +472,18 @@ public class BukaBukuApp {
     static JScrollPane createKeranjangPanel(JFrame frame) {
         JPanel container = new JPanel(new BorderLayout(20, 0));
         container.setBackground(BG_MAIN);
-        container.setBorder(new EmptyBorder(30, 40, 0, 40));
+        container.setBorder(new EmptyBorder(25, 40, 0, 40));
 
         JPanel leftPanel = new JPanel();
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
         leftPanel.setOpaque(false);
 
-        JLabel titleLabel = new JLabel("Keranjang");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        JLabel titleLabel = new JLabel("Keranjang Belanja");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
         titleLabel.setForeground(TEXT_DARK);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         leftPanel.add(titleLabel);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
         cartListPanel = new JPanel();
         cartListPanel.setLayout(new BoxLayout(cartListPanel, BoxLayout.Y_AXIS));
@@ -436,13 +492,13 @@ public class BukaBukuApp {
         
         leftPanel.add(cartListPanel);
 
-        RoundedPanel summaryPanel = new RoundedPanel(20, CARD_BG);
+        RoundedPanel summaryPanel = new RoundedPanel(18, CARD_BG);
         summaryPanel.setLayout(new BoxLayout(summaryPanel, BoxLayout.Y_AXIS));
-        summaryPanel.setBorder(new EmptyBorder(25, 25, 25, 25));
-        summaryPanel.setPreferredSize(new Dimension(350, 200));
+        summaryPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        summaryPanel.setPreferredSize(new Dimension(340, 190));
         
         JLabel sumTitle = new JLabel("Ringkasan Belanja");
-        sumTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        sumTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
         sumTitle.setForeground(TEXT_DARK);
         sumTitle.setAlignmentX(Component.LEFT_ALIGNMENT); 
 
@@ -451,48 +507,43 @@ public class BukaBukuApp {
         rowTotal.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel lblTeksTotal = new JLabel("Total Dipilih");
-        lblTeksTotal.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblTeksTotal.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblTeksTotal.setForeground(TEXT_MUTED);
         
         labelTotalHarga = new JLabel("Rp 0");
-        labelTotalHarga.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        labelTotalHarga.setFont(new Font("Segoe UI", Font.BOLD, 17));
         labelTotalHarga.setForeground(COLOR_PINK_SOLID);
         
         rowTotal.add(lblTeksTotal, BorderLayout.WEST);
         rowTotal.add(labelTotalHarga, BorderLayout.EAST);
 
-        RoundedButton btnCheckout = new RoundedButton("Checkout", COLOR_SAGE, TEXT_DARK);
+        RoundedButton btnCheckout = new RoundedButton("Checkout Sekarang", COLOR_SAGE, TEXT_DARK);
         btnCheckout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         btnCheckout.setAlignmentX(Component.LEFT_ALIGNMENT);
         
+        // 🟢 INTERAKSI CHECKOUT DENGAN MODAL DIALOG PEMBAYARAN
         btnCheckout.addActionListener(e -> {
             List<CartItem> selectedItems = new ArrayList<>();
-            int total = 0;
+            int subtotal = 0;
             for (CartItem item : cartData) {
                 if (item.selected) {
                     selectedItems.add(item);
-                    total += (item.book.price * item.qty);
+                    subtotal += (item.book.price * item.qty);
                 }
             }
             if (selectedItems.isEmpty()) {
-                new ModernAlertDialog(frame, "Peringatan", "Pilih minimal 1 buku untuk di-checkout.").setVisible(true);
+                showNotificationToast(frame, "⚠️ Pilih minimal 1 buku untuk di-checkout!");
                 return;
             }
             
-            String dateStr = new SimpleDateFormat("d MMMM yyyy 'pukul' HH.mm").format(new Date());
-            Order newOrder = new Order("#" + (orderHistory.size() + 1), dateStr, selectedItems, total, "BERHASIL");
-            orderHistory.add(0, newOrder);
-            
-            cartData.removeAll(selectedItems); 
-            
-            new ModernAlertDialog(frame, "Checkout Berhasil", "Pesanan kamu berhasil dibuat!").setVisible(true);
-            navigateTo("Riwayat", frame);
+            // Buka Modal Dialog Pembayaran Lengkap
+            new CheckoutDialog(frame, selectedItems, subtotal).setVisible(true);
         });
 
         summaryPanel.add(sumTitle);
-        summaryPanel.add(Box.createRigidArea(new Dimension(0, 25)));
+        summaryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         summaryPanel.add(rowTotal);
-        summaryPanel.add(Box.createRigidArea(new Dimension(0, 25)));
+        summaryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         summaryPanel.add(btnCheckout);
 
         JPanel rightWrapper = new JPanel(new BorderLayout());
@@ -516,22 +567,22 @@ public class BukaBukuApp {
     static JPanel createCartItemCard(CartItem item, JFrame frame) {
         RoundedPanel card = new RoundedPanel(15, CARD_BG);
         card.setLayout(new BorderLayout(15, 0));
-        card.setBorder(new EmptyBorder(15, 15, 15, 15));
-        card.setMaximumSize(new Dimension(800, 140));
-        card.setPreferredSize(new Dimension(800, 140));
+        card.setBorder(new EmptyBorder(12, 15, 12, 15));
+        card.setMaximumSize(new Dimension(800, 130));
+        card.setPreferredSize(new Dimension(800, 130));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel leftArea = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        JPanel leftArea = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         leftArea.setOpaque(false);
         
         JCheckBox chkBox = new JCheckBox();
         chkBox.setOpaque(false);
         chkBox.setSelected(item.selected);
         
-        JLabel imgLabel = loadIcon(item.book.imagePath, 70, 100);
+        JLabel imgLabel = loadIcon(item.book.imagePath, 60, 90);
         if (imgLabel.getIcon() == null) {
             imgLabel.setText("Foto");
-            imgLabel.setPreferredSize(new Dimension(70, 100));
+            imgLabel.setPreferredSize(new Dimension(60, 90));
             imgLabel.setOpaque(true);
             imgLabel.setBackground(Color.WHITE);
         }
@@ -544,46 +595,46 @@ public class BukaBukuApp {
         centerArea.setOpaque(false);
 
         JLabel title = new JLabel(item.book.title);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 15));
         title.setForeground(TEXT_DARK);
 
         JLabel price = new JLabel(String.format("Rp %,d", item.book.price).replace(',', '.'));
-        price.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        price.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         price.setForeground(TEXT_MUTED);
 
-        JPanel qtyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel qtyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         qtyPanel.setOpaque(false);
         
         RoundedButton btnMin = new RoundedButton("-", COLOR_PINK_SOFT, TEXT_DARK);
-        btnMin.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnMin.setPreferredSize(new Dimension(35, 35));
+        btnMin.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnMin.setPreferredSize(new Dimension(32, 32));
         
         JLabel lblQty = new JLabel(String.valueOf(item.qty));
-        lblQty.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblQty.setFont(new Font("Segoe UI", Font.BOLD, 13));
         
         RoundedButton btnPlus = new RoundedButton("+", COLOR_PINK_SOFT, TEXT_DARK);
-        btnPlus.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnPlus.setPreferredSize(new Dimension(35, 35));
+        btnPlus.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnPlus.setPreferredSize(new Dimension(32, 32));
 
         qtyPanel.add(btnMin);
         qtyPanel.add(lblQty);
         qtyPanel.add(btnPlus);
 
-        centerArea.add(Box.createRigidArea(new Dimension(0, 5)));
+        centerArea.add(Box.createRigidArea(new Dimension(0, 4)));
         centerArea.add(title);
         centerArea.add(price);
-        centerArea.add(Box.createRigidArea(new Dimension(0, 10)));
+        centerArea.add(Box.createRigidArea(new Dimension(0, 8)));
         centerArea.add(qtyPanel);
 
         JPanel rightArea = new JPanel(new BorderLayout());
         rightArea.setOpaque(false);
         
-        JLabel subtotal = new JLabel("<html><div style='text-align: right;'><span style='font-size:11px;color:gray;'>Total</span><br/><b>" + 
+        JLabel subtotal = new JLabel("<html><div style='text-align: right;'><span style='font-size:10px;color:gray;'>Subtotal</span><br/><b>" + 
                                      String.format("Rp %,d", item.book.price * item.qty).replace(',', '.') + "</b></div></html>");
         subtotal.setForeground(COLOR_PINK_SOLID);
         
-        JLabel btnDel = new JLabel(" X Hapus");
-        btnDel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        JLabel btnDel = new JLabel("✕ Hapus");
+        btnDel.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnDel.setForeground(new Color(220, 53, 69));
         btnDel.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDel.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -600,7 +651,7 @@ public class BukaBukuApp {
             if (item.qty > 1) { 
                 item.qty--; 
                 lblQty.setText(String.valueOf(item.qty)); 
-                subtotal.setText("<html><div style='text-align: right;'><span style='font-size:11px;color:gray;'>Total</span><br/><b>" + 
+                subtotal.setText("<html><div style='text-align: right;'><span style='font-size:10px;color:gray;'>Subtotal</span><br/><b>" + 
                                  String.format("Rp %,d", item.book.price * item.qty).replace(',', '.') + "</b></div></html>");
                 updateRingkasanBelanja(); 
             }
@@ -609,7 +660,7 @@ public class BukaBukuApp {
         btnPlus.addActionListener(e -> {
             item.qty++; 
             lblQty.setText(String.valueOf(item.qty)); 
-            subtotal.setText("<html><div style='text-align: right;'><span style='font-size:11px;color:gray;'>Total</span><br/><b>" + 
+            subtotal.setText("<html><div style='text-align: right;'><span style='font-size:10px;color:gray;'>Subtotal</span><br/><b>" + 
                              String.format("Rp %,d", item.book.price * item.qty).replace(',', '.') + "</b></div></html>");
             updateRingkasanBelanja();
         });
@@ -630,7 +681,7 @@ public class BukaBukuApp {
         cardWrapper.setLayout(new BoxLayout(cardWrapper, BoxLayout.Y_AXIS));
         cardWrapper.setOpaque(false);
         cardWrapper.add(card);
-        cardWrapper.setBorder(new EmptyBorder(0, 0, 15, 0));
+        cardWrapper.setBorder(new EmptyBorder(0, 0, 12, 0));
         return cardWrapper;
     }
 
@@ -639,41 +690,74 @@ public class BukaBukuApp {
         JPanel heroPanel = new JPanel();
         heroPanel.setLayout(new BoxLayout(heroPanel, BoxLayout.Y_AXIS));
         heroPanel.setOpaque(false);
-        heroPanel.setBorder(new EmptyBorder(30, 0, 30, 0));
+        heroPanel.setBorder(new EmptyBorder(25, 0, 25, 0));
 
-        JLabel welcomeLabel = new JLabel("Selamat Datang di BukaBuku");
-        welcomeLabel.setFont(new Font("Segoe UI", Font.BOLD, 34));
+        JLabel welcomeLabel = new JLabel("Temukan Bacaan Favoritmu");
+        welcomeLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
         welcomeLabel.setForeground(TEXT_DARK);
         welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel subtitleLabel = new JLabel("Temukan jendela dunia dalam setiap halaman.");
-        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 16));
+        JLabel subtitleLabel = new JLabel("Jelajahi koleksi buku terbaik untuk menemanimu setiap hari.");
+        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 14));
         subtitleLabel.setForeground(TEXT_MUTED);
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel searchContainer = new RoundedPanel(25, Color.WHITE);
-        searchContainer.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
-        searchContainer.setMaximumSize(new Dimension(500, 45));
+        JPanel searchContainer = new RoundedPanel(20, Color.WHITE);
+        searchContainer.setLayout(new FlowLayout(FlowLayout.LEFT, 12, 8));
+        searchContainer.setMaximumSize(new Dimension(480, 42));
         searchContainer.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JTextField searchField = new JTextField("Cari buku berdasarkan judul...");
+        String placeholderText = "Cari judul buku atau penulis...";
+        JTextField searchField = new JTextField(placeholderText);
         searchField.setBorder(null);
         searchField.setBackground(Color.WHITE);
         searchField.setForeground(TEXT_MUTED);
-        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        searchField.setPreferredSize(new Dimension(400, 25));
+        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        searchField.setPreferredSize(new Dimension(410, 22));
+
+        searchField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (searchField.getText().equals(placeholderText)) {
+                    searchField.setText("");
+                    searchField.setForeground(TEXT_DARK);
+                }
+            }
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (searchField.getText().trim().isEmpty()) {
+                    searchField.setText(placeholderText);
+                    searchField.setForeground(TEXT_MUTED);
+                }
+            }
+        });
+
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            private void triggerSearch() {
+                String txt = searchField.getText();
+                if (!txt.equals(placeholderText)) {
+                    filterKatalog(txt, frame);
+                } else {
+                    filterKatalog("", frame);
+                }
+            }
+            public void insertUpdate(DocumentEvent e) { triggerSearch(); }
+            public void removeUpdate(DocumentEvent e) { triggerSearch(); }
+            public void changedUpdate(DocumentEvent e) { triggerSearch(); }
+        });
+        
         searchContainer.add(new JLabel("🔍"));
         searchContainer.add(searchField);
 
         heroPanel.add(welcomeLabel);
-        heroPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        heroPanel.add(Box.createRigidArea(new Dimension(0, 4)));
         heroPanel.add(subtitleLabel);
-        heroPanel.add(Box.createRigidArea(new Dimension(0, 25)));
+        heroPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         heroPanel.add(searchContainer);
 
-        katalogGridPanel = new JPanel(new GridLayout(0, 4, 25, 25));
+        katalogGridPanel = new JPanel(new GridLayout(0, 4, 20, 20));
         katalogGridPanel.setOpaque(false);
-        katalogGridPanel.setBorder(new EmptyBorder(10, 40, 40, 40));
+        katalogGridPanel.setBorder(new EmptyBorder(10, 35, 30, 35));
         for (Book b : allBooks) katalogGridPanel.add(createBookCard(b, frame));
 
         JPanel container = new JPanel();
@@ -696,16 +780,16 @@ public class BukaBukuApp {
     static JScrollPane createWishlistPanel(JFrame frame) {
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         headerPanel.setOpaque(false);
-        headerPanel.setBorder(new EmptyBorder(30, 40, 10, 40));
+        headerPanel.setBorder(new EmptyBorder(25, 35, 10, 35));
 
         JLabel titleLabel = new JLabel("Wishlist Kamu");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 26));
         titleLabel.setForeground(TEXT_DARK);
         headerPanel.add(titleLabel);
 
-        wishlistGridPanel = new JPanel(new GridLayout(0, 4, 25, 25));
+        wishlistGridPanel = new JPanel(new GridLayout(0, 4, 20, 20));
         wishlistGridPanel.setOpaque(false);
-        wishlistGridPanel.setBorder(new EmptyBorder(10, 40, 40, 40));
+        wishlistGridPanel.setBorder(new EmptyBorder(10, 35, 30, 35));
 
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
@@ -725,19 +809,19 @@ public class BukaBukuApp {
     }
 
     static JPanel createBookCard(Book book, JFrame parentFrame) {
-        RoundedPanel card = new RoundedPanel(20, CARD_BG);
+        RoundedPanel card = new RoundedPanel(18, CARD_BG);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(20, 20, 20, 20));
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
 
         JPanel imageContainer = new JPanel(new GridBagLayout());
         imageContainer.setOpaque(false);
-        imageContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+        imageContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
         imageContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel imgLabel = loadIcon(book.imagePath, 140, 200);
+        JLabel imgLabel = loadIcon(book.imagePath, 130, 185);
         if (imgLabel.getIcon() == null) {
             imgLabel.setText("Gambar Kosong");
-            imgLabel.setPreferredSize(new Dimension(140, 200));
+            imgLabel.setPreferredSize(new Dimension(130, 185));
             imgLabel.setOpaque(true);
             imgLabel.setBackground(Color.WHITE);
         }
@@ -747,19 +831,19 @@ public class BukaBukuApp {
         catLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
         catLabel.setForeground(COLOR_DARK_GREEN);
         
-        JLabel titleLabel = new JLabel("<html><body style='width: 160px;'>" + book.title + "</body></html>");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        JLabel titleLabel = new JLabel("<html><body style='width: 150px;'>" + book.title + "</body></html>");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
         titleLabel.setForeground(TEXT_DARK);
 
         JLabel authorLabel = new JLabel("Oleh " + book.author);
-        authorLabel.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        authorLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         authorLabel.setForeground(TEXT_MUTED);
 
-        String shortDesc = book.description.length() > 65 ? book.description.substring(0, 65) + "..." : book.description;
-        JLabel descLabel = new JLabel("<html><body style='width: 170px; color: #6B7280; font-size: 11px;'>" + shortDesc + "</body></html>");
+        String shortDesc = book.description.length() > 60 ? book.description.substring(0, 60) + "..." : book.description;
+        JLabel descLabel = new JLabel("<html><body style='width: 160px; color: #6B7280; font-size: 11px;'>" + shortDesc + "</body></html>");
         
         JLabel readMoreLabel = new JLabel("Baca Selengkapnya");
-        readMoreLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        readMoreLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
         readMoreLabel.setForeground(COLOR_DARK_GREEN);
         readMoreLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
         readMoreLabel.addMouseListener(new MouseAdapter() {
@@ -767,27 +851,32 @@ public class BukaBukuApp {
         });
 
         RoundedButton btnAdd = new RoundedButton("Tambah ke Keranjang", COLOR_DARK_GREEN, Color.WHITE);
-        btnAdd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38)); 
+        btnAdd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36)); 
         btnAdd.addActionListener(e -> addToCart(book, parentFrame));
         
         JPanel priceHeartPanel = new JPanel(new BorderLayout());
         priceHeartPanel.setOpaque(false);
-        priceHeartPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        priceHeartPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 
         JLabel priceLabel = new JLabel(String.format("Rp %,d", book.price).replace(',', '.'));
-        priceLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        priceLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
         priceLabel.setForeground(TEXT_DARK);
         
         boolean isInWishlist = wishlistData.contains(book);
         JLabel heartLabel = new JLabel(isInWishlist ? "♥" : "♡");
-        heartLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        heartLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         heartLabel.setForeground(isInWishlist ? COLOR_PINK_SOLID : Color.LIGHT_GRAY);
         heartLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
         heartLabel.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                if (wishlistData.contains(book)) wishlistData.remove(book);
-                else wishlistData.add(book);
+                if (wishlistData.contains(book)) {
+                    wishlistData.remove(book);
+                    showNotificationToast(parentFrame, "Dihapus dari Wishlist");
+                } else {
+                    wishlistData.add(book);
+                    showNotificationToast(parentFrame, "♥ Ditambahkan ke Wishlist!");
+                }
                 refreshGrids(parentFrame);
                 updateNavbar();
             }
@@ -805,19 +894,19 @@ public class BukaBukuApp {
         priceHeartPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         card.add(imageContainer);
-        card.add(Box.createRigidArea(new Dimension(0, 15)));
+        card.add(Box.createRigidArea(new Dimension(0, 12)));
         card.add(catLabel);
-        card.add(Box.createRigidArea(new Dimension(0, 5)));
+        card.add(Box.createRigidArea(new Dimension(0, 4)));
         card.add(titleLabel);
         card.add(authorLabel);
-        card.add(Box.createRigidArea(new Dimension(0, 5)));
+        card.add(Box.createRigidArea(new Dimension(0, 4)));
         card.add(descLabel);
         card.add(Box.createRigidArea(new Dimension(0, 2)));
         card.add(readMoreLabel);
         card.add(Box.createVerticalGlue());
-        card.add(Box.createRigidArea(new Dimension(0, 15)));
+        card.add(Box.createRigidArea(new Dimension(0, 12)));
         card.add(btnAdd);
-        card.add(Box.createRigidArea(new Dimension(0, 10)));
+        card.add(Box.createRigidArea(new Dimension(0, 8)));
         card.add(priceHeartPanel);
 
         return card;
@@ -827,27 +916,29 @@ public class BukaBukuApp {
     static JPanel createLoginPanel(JFrame frame) {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG_MAIN);
-        RoundedPanel loginCard = new RoundedPanel(25, CARD_BG);
+        RoundedPanel loginCard = new RoundedPanel(22, CARD_BG);
         loginCard.setLayout(new BoxLayout(loginCard, BoxLayout.Y_AXIS));
-        loginCard.setBorder(new EmptyBorder(40, 50, 40, 50));
-        loginCard.setPreferredSize(new Dimension(450, 450));
+        loginCard.setBorder(new EmptyBorder(35, 45, 35, 45));
+        loginCard.setPreferredSize(new Dimension(420, 430));
 
         JLabel title = new JLabel("Masuk ke Akunmu");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         JLabel subtitle = new JLabel("Selamat datang kembali di BukaBuku!");
         subtitle.setForeground(TEXT_MUTED);
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JPanel emailWrapper = createInputWrapper("Email", new JTextField());
         JPanel passWrapper = createInputWrapper("Password", new JPasswordField());
 
         RoundedButton btnLogin = new RoundedButton("Login", COLOR_DARK_GREEN, Color.WHITE);
-        btnLogin.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        btnLogin.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         btnLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnLogin.addActionListener(e -> navigateTo("Katalog", frame));
 
         JLabel linkRegister = new JLabel("Belum punya akun? Daftar sekarang.");
+        linkRegister.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         linkRegister.setForeground(COLOR_DARK_GREEN);
         linkRegister.setCursor(new Cursor(Cursor.HAND_CURSOR));
         linkRegister.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -856,15 +947,15 @@ public class BukaBukuApp {
         });
 
         loginCard.add(title);
-        loginCard.add(Box.createRigidArea(new Dimension(0, 5)));
+        loginCard.add(Box.createRigidArea(new Dimension(0, 4)));
         loginCard.add(subtitle);
-        loginCard.add(Box.createRigidArea(new Dimension(0, 30)));
+        loginCard.add(Box.createRigidArea(new Dimension(0, 25)));
         loginCard.add(emailWrapper);
-        loginCard.add(Box.createRigidArea(new Dimension(0, 15)));
+        loginCard.add(Box.createRigidArea(new Dimension(0, 12)));
         loginCard.add(passWrapper);
-        loginCard.add(Box.createRigidArea(new Dimension(0, 30)));
+        loginCard.add(Box.createRigidArea(new Dimension(0, 25)));
         loginCard.add(btnLogin);
-        loginCard.add(Box.createRigidArea(new Dimension(0, 15)));
+        loginCard.add(Box.createRigidArea(new Dimension(0, 12)));
         loginCard.add(linkRegister);
         wrapper.add(loginCard);
 
@@ -878,13 +969,13 @@ public class BukaBukuApp {
     static JPanel createRegisterPanel(JFrame frame) {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG_MAIN);
-        RoundedPanel registerCard = new RoundedPanel(25, CARD_BG);
+        RoundedPanel registerCard = new RoundedPanel(22, CARD_BG);
         registerCard.setLayout(new BoxLayout(registerCard, BoxLayout.Y_AXIS));
-        registerCard.setBorder(new EmptyBorder(30, 50, 30, 50));
-        registerCard.setPreferredSize(new Dimension(450, 550));
+        registerCard.setBorder(new EmptyBorder(30, 45, 30, 45));
+        registerCard.setPreferredSize(new Dimension(420, 510));
 
         JLabel title = new JLabel("Daftar Akun Baru");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JPanel nameWrapper = createInputWrapper("Nama Lengkap", new JTextField());
@@ -893,15 +984,16 @@ public class BukaBukuApp {
         JPanel passWrapper = createInputWrapper("Password", new JPasswordField());
 
         RoundedButton btnDaftar = new RoundedButton("Buat Akun", COLOR_DARK_GREEN, Color.WHITE);
-        btnDaftar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        btnDaftar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         btnDaftar.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         btnDaftar.addActionListener(e -> {
-            new ModernAlertDialog(frame, "Pendaftaran Sukses", "Akun berhasil dibuat! Silakan login untuk melanjutkan.").setVisible(true);
+            showNotificationToast(frame, "✅ Pendaftaran berhasil! Silakan login.");
             navigateTo("Login", frame);
         });
 
         JLabel linkLogin = new JLabel("Sudah punya akun? Masuk di sini.");
+        linkLogin.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         linkLogin.setForeground(COLOR_DARK_GREEN);
         linkLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         linkLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -910,17 +1002,17 @@ public class BukaBukuApp {
         });
 
         registerCard.add(title);
-        registerCard.add(Box.createRigidArea(new Dimension(0, 30)));
+        registerCard.add(Box.createRigidArea(new Dimension(0, 20)));
         registerCard.add(nameWrapper);
-        registerCard.add(Box.createRigidArea(new Dimension(0, 10)));
+        registerCard.add(Box.createRigidArea(new Dimension(0, 8)));
         registerCard.add(userWrapper);
-        registerCard.add(Box.createRigidArea(new Dimension(0, 10)));
+        registerCard.add(Box.createRigidArea(new Dimension(0, 8)));
         registerCard.add(emailWrapper);
-        registerCard.add(Box.createRigidArea(new Dimension(0, 10)));
+        registerCard.add(Box.createRigidArea(new Dimension(0, 8)));
         registerCard.add(passWrapper);
-        registerCard.add(Box.createRigidArea(new Dimension(0, 30)));
+        registerCard.add(Box.createRigidArea(new Dimension(0, 25)));
         registerCard.add(btnDaftar);
-        registerCard.add(Box.createRigidArea(new Dimension(0, 15)));
+        registerCard.add(Box.createRigidArea(new Dimension(0, 12)));
         registerCard.add(linkLogin);
         wrapper.add(registerCard);
 
@@ -943,23 +1035,23 @@ public class BukaBukuApp {
         label.setForeground(TEXT_DARK);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        inputField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        inputField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        inputField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        inputField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         inputField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(COLOR_SAGE, 2, true),
-            new EmptyBorder(5, 10, 5, 10)
+            BorderFactory.createLineBorder(COLOR_SAGE, 1, true),
+            new EmptyBorder(4, 8, 4, 8)
         ));
         inputField.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         wrapper.add(label);
-        wrapper.add(Box.createRigidArea(new Dimension(0, 5)));
+        wrapper.add(Box.createRigidArea(new Dimension(0, 4)));
         wrapper.add(inputField);
         return wrapper;
     }
 
     static JLabel createMenuLabel(String text, JFrame frame) {
         JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lbl.setForeground(TEXT_DARK);
         lbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
         lbl.addMouseListener(new MouseAdapter() {
@@ -1008,63 +1100,198 @@ class Order {
     }
 }
 
-// ================== KELAS UI CUSTOM ==================
-class ModernAlertDialog extends JDialog {
-    public ModernAlertDialog(JFrame parent, String titleText, String messageText) {
+// ================== 🟢 CLASS DIALOG CHECKOUT & PEMBAYARAN ==================
+class CheckoutDialog extends JDialog {
+    public CheckoutDialog(JFrame parent, List<CartItem> selectedItems, int subtotal) {
         super(parent, true);
         setUndecorated(true);
-        setSize(400, 200);
+        setSize(500, 560);
         setLocationRelativeTo(parent);
         setBackground(new Color(0, 0, 0, 0));
 
-        RoundedPanel panel = new RoundedPanel(25, Color.WHITE, new Color(50, 50, 50));
-        panel.setLayout(new BorderLayout(15, 15));
-        panel.setBorder(new EmptyBorder(25, 25, 25, 25));
+        int ongkir = 10000;
+        int grandTotal = subtotal + ongkir;
 
-        JLabel title = new JLabel(titleText, SwingConstants.CENTER);
+        RoundedPanel mainCard = new RoundedPanel(25, Color.WHITE, new Color(200, 200, 200));
+        mainCard.setLayout(new BorderLayout(15, 15));
+        mainCard.setBorder(new EmptyBorder(22, 25, 22, 25));
+
+        // 1. Header Dialog
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+
+        JLabel title = new JLabel("💳 Pembayaran & Checkout");
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        title.setForeground(new Color(31, 41, 55));
+        title.setForeground(BukaBukuApp.TEXT_DARK);
 
-        JLabel message = new JLabel("<html><center>" + messageText + "</center></html>", SwingConstants.CENTER);
-        message.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        message.setForeground(new Color(107, 114, 128));
+        JLabel closeBtn = new JLabel("✕");
+        closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        closeBtn.setForeground(new Color(156, 163, 175));
+        closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        closeBtn.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) { dispose(); }
+        });
 
-        RoundedButton btnOk = new RoundedButton("OK", BukaBukuApp.COLOR_DARK_GREEN, Color.WHITE);
-        btnOk.setPreferredSize(new Dimension(100, 35));
-        btnOk.addActionListener(e -> dispose());
+        header.add(title, BorderLayout.WEST);
+        header.add(closeBtn, BorderLayout.EAST);
+
+        // 2. Body Form
+        JPanel bodyPanel = new JPanel();
+        bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS));
+        bodyPanel.setOpaque(false);
+
+        // Form Pengiriman
+        JTextField txtNama = new JTextField("Syifa Nazira");
+        JTextField txtHp = new JTextField("081234567890");
+        JTextArea txtAlamat = new JTextArea("Jl. Universitas No. 9, Medan", 2, 20);
+        txtAlamat.setLineWrap(true);
+        txtAlamat.setWrapStyleWord(true);
+        txtAlamat.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtAlamat.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BukaBukuApp.COLOR_SAGE, 1, true),
+            new EmptyBorder(4, 6, 4, 6)
+        ));
+
+        bodyPanel.add(BukaBukuApp.createInputWrapper("Nama Penerima", txtNama));
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+        bodyPanel.add(BukaBukuApp.createInputWrapper("No. Telepon / WhatsApp", txtHp));
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+
+        JLabel lblAlamat = new JLabel("Alamat Lengkap Pengiriman");
+        lblAlamat.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblAlamat.setForeground(BukaBukuApp.TEXT_DARK);
+        lblAlamat.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JPanel btnPanel = new JPanel();
-        btnPanel.setOpaque(false);
-        btnPanel.add(btnOk);
+        bodyPanel.add(lblAlamat);
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 4)));
+        bodyPanel.add(txtAlamat);
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 12)));
 
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(message, BorderLayout.CENTER);
-        panel.add(btnPanel, BorderLayout.SOUTH);
-        setContentPane(panel);
+        // Pilihan Metode Pembayaran
+        JLabel lblMethod = new JLabel("Pilih Metode Pembayaran");
+        lblMethod.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblMethod.setForeground(BukaBukuApp.TEXT_DARK);
+        lblMethod.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        String[] methods = {
+            "Transfer Bank BCA (Virtual Account)",
+            "Transfer Bank Mandiri (Virtual Account)",
+            "QRIS / E-Wallet (GoPay, OVO, DANA)",
+            "COD (Bayar Saat Barang Sampai)"
+        };
+        JComboBox<String> cbMethod = new JComboBox<>(methods);
+        cbMethod.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cbMethod.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        cbMethod.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblInfoPay = new JLabel("No. Virtual Account: 8801-2514-0212");
+        lblInfoPay.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblInfoPay.setForeground(BukaBukuApp.COLOR_DARK_GREEN);
+        lblInfoPay.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        cbMethod.addActionListener(e -> {
+            String selected = (String) cbMethod.getSelectedItem();
+            if (selected.contains("BCA")) {
+                lblInfoPay.setText("No. Virtual Account BCA: 8801-2514-0212");
+            } else if (selected.contains("Mandiri")) {
+                lblInfoPay.setText("No. Virtual Account Mandiri: 8901-7788-9900");
+            } else if (selected.contains("QRIS")) {
+                lblInfoPay.setText("Silakan Scan Kode QRIS BukaBuku setelah konfirmasi");
+            } else {
+                lblInfoPay.setText("Siapkan uang tunai sesuai total harga saat kurir sampai");
+            }
+        });
+
+        bodyPanel.add(lblMethod);
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 4)));
+        bodyPanel.add(cbMethod);
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 4)));
+        bodyPanel.add(lblInfoPay);
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+
+        // Rincian Biaya
+        JSeparator sep = new JSeparator();
+        bodyPanel.add(sep);
+        bodyPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        JPanel summaryBox = new JPanel(new GridLayout(3, 2, 0, 4));
+        summaryBox.setOpaque(false);
+        summaryBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        summaryBox.add(new JLabel("Subtotal Buku:"));
+        JLabel lblSub = new JLabel("Rp " + String.format("%,d", subtotal).replace(',', '.'), SwingConstants.RIGHT);
+        summaryBox.add(lblSub);
+
+        summaryBox.add(new JLabel("Ongkos Kirim:"));
+        JLabel lblOngkir = new JLabel("Rp " + String.format("%,d", ongkir).replace(',', '.'), SwingConstants.RIGHT);
+        summaryBox.add(lblOngkir);
+
+        JLabel lblTotalTeks = new JLabel("Total Bayar:");
+        lblTotalTeks.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        summaryBox.add(lblTotalTeks);
+
+        JLabel lblGrand = new JLabel("Rp " + String.format("%,d", grandTotal).replace(',', '.'), SwingConstants.RIGHT);
+        lblGrand.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblGrand.setForeground(BukaBukuApp.COLOR_PINK_SOLID);
+        summaryBox.add(lblGrand);
+
+        bodyPanel.add(summaryBox);
+
+        // 3. Footer Action Button
+        RoundedButton btnPay = new RoundedButton("Konfirmasi & Bayar Sekarang", BukaBukuApp.COLOR_DARK_GREEN, Color.WHITE);
+        btnPay.setPreferredSize(new Dimension(0, 40));
+        
+        btnPay.addActionListener(e -> {
+            if (txtNama.getText().trim().isEmpty() || txtAlamat.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Mohon lengkapi Nama dan Alamat pengiriman!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Buat Pesanan Baru
+            String dateStr = new SimpleDateFormat("d MMMM yyyy 'pukul' HH.mm").format(new Date());
+            Order newOrder = new Order("#" + (BukaBukuApp.orderHistory.size() + 1), dateStr, selectedItems, grandTotal, "BERHASIL");
+            BukaBukuApp.orderHistory.add(0, newOrder);
+            
+            // Hapus item dari Keranjang
+            BukaBukuApp.cartData.removeAll(selectedItems);
+            
+            dispose(); // Tutup Dialog Pembayaran
+            
+            // Tampilkan Notifikasi & Pindah ke Riwayat
+            BukaBukuApp.showNotificationToast(parent, "🎉 Pembayaran Berhasil! Pesanan diproses.");
+            BukaBukuApp.navigateTo("Riwayat", parent);
+        });
+
+        mainCard.add(header, BorderLayout.NORTH);
+        mainCard.add(bodyPanel, BorderLayout.CENTER);
+        mainCard.add(btnPay, BorderLayout.SOUTH);
+
+        setContentPane(mainCard);
     }
 }
 
+// ================== KELAS UI CUSTOM ==================
 class ModernDetailDialog extends JDialog {
     public ModernDetailDialog(JFrame parent, Book book) {
         super(parent, true);
         setUndecorated(true);
-        setSize(450, 300);
+        setSize(420, 280);
         setLocationRelativeTo(parent);
         setBackground(new Color(0, 0, 0, 0));
 
-        RoundedPanel panel = new RoundedPanel(25, Color.WHITE, new Color(50, 50, 50));
-        panel.setLayout(new BorderLayout(15, 15));
-        panel.setBorder(new EmptyBorder(20, 25, 25, 25));
+        RoundedPanel panel = new RoundedPanel(22, Color.WHITE, new Color(200, 200, 200));
+        panel.setLayout(new BorderLayout(12, 12));
+        panel.setBorder(new EmptyBorder(18, 22, 22, 22));
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         
         JLabel title = new JLabel(book.title);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setForeground(new Color(31, 41, 55));
 
-        JLabel closeBtn = new JLabel("X");
-        closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        JLabel closeBtn = new JLabel("✕");
+        closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         closeBtn.setForeground(new Color(156, 163, 175));
         closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         closeBtn.addMouseListener(new MouseAdapter() {
@@ -1075,9 +1302,10 @@ class ModernDetailDialog extends JDialog {
         header.add(closeBtn, BorderLayout.EAST);
 
         JLabel author = new JLabel("Oleh " + book.author);
-        author.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        author.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        author.setForeground(BukaBukuApp.TEXT_MUTED);
 
-        JPanel titlePanel = new JPanel(new GridLayout(2, 1));
+        JPanel titlePanel = new JPanel(new GridLayout(2, 1, 0, 2));
         titlePanel.setOpaque(false);
         titlePanel.add(header);
         titlePanel.add(author);
@@ -1087,7 +1315,8 @@ class ModernDetailDialog extends JDialog {
         desc.setLineWrap(true);
         desc.setEditable(false);
         desc.setOpaque(false);
-        desc.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        desc.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        desc.setForeground(BukaBukuApp.TEXT_DARK);
 
         panel.add(titlePanel, BorderLayout.NORTH);
         panel.add(desc, BorderLayout.CENTER);
@@ -1133,7 +1362,7 @@ class RoundedButton extends JButton {
         super(text);
         this.bg = bg;
         setForeground(fg);
-        setFont(new Font("Segoe UI", Font.BOLD, 13));
+        setFont(new Font("Segoe UI", Font.BOLD, 12));
         setFocusPainted(false);
         setContentAreaFilled(false);
         setBorderPainted(false);
@@ -1145,7 +1374,7 @@ class RoundedButton extends JButton {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(getModel().isRollover() ? new Color(246, 226, 233) : bg);
-        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
         if (getModel().isRollover()) setForeground(new Color(124, 156, 123));
         else setForeground(Color.WHITE);
         g2.dispose();
