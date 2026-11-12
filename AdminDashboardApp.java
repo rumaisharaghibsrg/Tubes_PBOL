@@ -211,7 +211,7 @@ public class AdminDashboardApp {
 
             JPanel btnPanel = new JPanel(new GridLayout(2, 2, 10, 10));
             btnPanel.setOpaque(false);
-            btnPanel.setMaximumSize(new Dimension(270, 90)); // Dibatasi lebarnya agar rapi di tengah
+            btnPanel.setMaximumSize(new Dimension(270, 130)); // Dibatasi lebarnya agar rapi di tengah
             btnPanel.setAlignmentX(Component.CENTER_ALIGNMENT); // Rata Tengah
             
             btnAdd = new RoundedButton("Tambah", COLOR_MUTED_GREEN, Color.WHITE);
@@ -440,7 +440,7 @@ public class AdminDashboardApp {
 
             JPanel btnPanel = new JPanel(new GridLayout(2, 2, 10, 10));
             btnPanel.setOpaque(false);
-            btnPanel.setMaximumSize(new Dimension(270, 90));
+            btnPanel.setMaximumSize(new Dimension(270, 130));
             btnPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
             RoundedButton btnAdd = new RoundedButton("Tambah", COLOR_MUTED_GREEN, Color.WHITE);
@@ -514,7 +514,7 @@ public class AdminDashboardApp {
     static class OrderPanel extends JPanel {
         DefaultTableModel tableModel;
         JTable table;
-        JTextField txtNoOrder, txtTotal;
+        JTextField txtNoOrder, txtPelanggan, txtItem, txtTotal;
         JComboBox<String> cbStatus;
         JLabel lblTotal, lblPending, lblSelesai;
 
@@ -560,13 +560,17 @@ public class AdminDashboardApp {
             formContent.add(formTitle);
             formContent.add(Box.createRigidArea(new Dimension(0, 20)));
 
-            txtNoOrder = new JTextField(); txtNoOrder.setEditable(false);
-            txtNoOrder.setBackground(new Color(243, 244, 246));
-            txtTotal = new JTextField(); txtTotal.setEditable(false);
-            txtTotal.setBackground(new Color(243, 244, 246));
-            cbStatus = new JComboBox<>(new String[]{"Pending", "Diproses", "Selesai"});
+           txtNoOrder = new JTextField(); txtNoOrder.setEditable(false); txtNoOrder.setBackground(new Color(243, 244, 246));
+            txtPelanggan = new JTextField(); txtPelanggan.setEditable(false); txtPelanggan.setBackground(new Color(243, 244, 246)); // BARU
+            txtItem = new JTextField(); txtItem.setEditable(false); txtItem.setBackground(new Color(243, 244, 246)); // BARU
+            txtTotal = new JTextField(); txtTotal.setEditable(false); txtTotal.setBackground(new Color(243, 244, 246));
+            cbStatus = new JComboBox<>(new String[]{"Pending", "Diproses", "Dikirim", "Selesai", "Dibatalkan"}); // Ditambah 'Dikirim' & 'Dibatalkan'
 
             formContent.add(createInputWrapper("No Order", txtNoOrder));
+            formContent.add(Box.createRigidArea(new Dimension(0, 10)));
+            formContent.add(createInputWrapper("Nama Pelanggan", txtPelanggan)); // BARU
+            formContent.add(Box.createRigidArea(new Dimension(0, 10)));
+            formContent.add(createInputWrapper("Detail Item", txtItem)); // BARU
             formContent.add(Box.createRigidArea(new Dimension(0, 10)));
             formContent.add(createInputWrapper("Total Harga", txtTotal));
             formContent.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -607,6 +611,8 @@ public class AdminDashboardApp {
                 int r = table.getSelectedRow();
                 if (r != -1) {
                     txtNoOrder.setText(tableModel.getValueAt(r, 0).toString());
+                    txtPelanggan.setText(tableModel.getValueAt(r, 1).toString()); // BARU
+                    txtItem.setText(tableModel.getValueAt(r, 2).toString());      // BARU
                     txtTotal.setText(tableModel.getValueAt(r, 3).toString());
                     cbStatus.setSelectedItem(tableModel.getValueAt(r, 4).toString());
                 }
@@ -615,8 +621,9 @@ public class AdminDashboardApp {
             tableCard.add(new JScrollPane(table), BorderLayout.CENTER);
             add(tableCard, BorderLayout.CENTER);
 
-            tableModel.addRow(new Object[]{"ORD-001", "Budi Santoso", "Laskar Pelangi", "Rp 85.000", "Pending"});
-            tableModel.addRow(new Object[]{"ORD-002", "Siti Aminah", "Atomic Habits", "Rp 108.000", "Selesai"});
+            tableModel.addRow(new Object[]{"ORD-001", "Budi Santoso", "Laskar Pelangi (x1)", "Rp 90.000", "Pending"});
+            tableModel.addRow(new Object[]{"ORD-002", "Siti Aminah", "Atomic Habits (x2)", "Rp 216.000", "Diproses"});
+            tableModel.addRow(new Object[]{"ORD-003", "Jelita Hati", "Bumi (x1)", "Rp 92.000", "Selesai"}); // Tambah data Jelita 😄
             updateStats();
         }
 
@@ -788,11 +795,14 @@ class ImageTableCellRenderer extends DefaultTableCellRenderer {
             File file = new File(path);
             if(file.exists()) {
                 ImageIcon icon = new ImageIcon(path);
-                Image img = icon.getImage().getScaledInstance(45, 65, Image.SCALE_SMOOTH);
+                // Ukuran gambar diperbaiki agar proporsional
+                Image img = icon.getImage().getScaledInstance(50, 70, Image.SCALE_SMOOTH);
                 label.setIcon(new ImageIcon(img));
             } else {
-                label.setText("No IMG");
-                label.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                // Tampilan jika gambar tidak ditemukan (lebih rapi dari "No IMG")
+                label.setText("📷 Gambar Tidak Ditemukan");
+                label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                label.setForeground(new Color(150, 150, 150));
             }
         }
         
@@ -848,7 +858,7 @@ class RoundedButton extends JButton {
         setFont(new Font("Segoe UI", Font.BOLD, 14));
         setFocusPainted(false); setContentAreaFilled(false); setBorderPainted(false);
         setCursor(new Cursor(Cursor.HAND_CURSOR));
-        setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
         setAlignmentX(Component.CENTER_ALIGNMENT); // Teks & tombol terpusat
     }
     @Override
