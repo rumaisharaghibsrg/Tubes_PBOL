@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   mysql_db:
@@ -7,7 +6,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: tubespbol
-      MYSQL_USER: root
+      MYSQL_USER: umi
       MYSQL_PASSWORD: umihebat
     ports:
       - "3306:3306"
