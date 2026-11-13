@@ -4,6 +4,7 @@ services:
     image: mysql:latest
     container_name: mysql-db
     environment:
+      MYSQL_USER : root
       MYSQL_ROOT_PASSWORD: umihebat
       MYSQL_DATABASE: BukaBuku
     ports:
