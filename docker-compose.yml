@@ -1,16 +1,19 @@
-version: '3.9'
+version: '3.8'
+
 services:
-  db:
-    image: mysql:latest
-    container_name: mysql-db
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_container
     environment:
-      MYSQL_USER : root
-      MYSQL_ROOT_PASSWORD: umihebat
-      MYSQL_DATABASE: BukaBuku
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: project_db
+      MYSQL_USER: project_user
+      MYSQL_PASSWORD: project_password
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
-  mysql-data:
+  mysql_data:
