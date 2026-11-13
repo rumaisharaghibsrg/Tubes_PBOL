@@ -4,8 +4,8 @@ services:
     image: mysql:latest
     container_name: mysql-db
     environment:
-      MYSQL_ROOT_PASSWORD: my-secret-pw
-      MYSQL_DATABASE: mydb
+      MYSQL_ROOT_PASSWORD: umihebat
+      MYSQL_DATABASE: BukaBuku
     ports:
       - "3306:3306"
     volumes:
