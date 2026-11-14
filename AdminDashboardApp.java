@@ -4,8 +4,10 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 public class AdminDashboardApp {
 
@@ -25,7 +27,7 @@ public class AdminDashboardApp {
     static JLabel navBooks, navUsers, navOrders;
 
     static String rupiah(long value) {
-        return "Rp " + NumberFormat.getInstance(new Locale("id", "ID")).format(value);
+        return "Rp " + NumberFormat.getInstance(Locale.forLanguageTag("id-ID")).format(value);
     }
 
     static void styleTable(JTable table) {
@@ -49,7 +51,7 @@ public class AdminDashboardApp {
     }
 
     static JPanel statCard(String title, JLabel value, Color accent) {
-        RoundedPanel panel = new RoundedPanel(17, WHITE);
+        AdminRoundedPanel panel = new AdminRoundedPanel(17, WHITE);
         panel.setLayout(new BorderLayout(5, 8));
         panel.setBorder(new EmptyBorder(14, 18, 14, 18));
 
@@ -68,7 +70,7 @@ public class AdminDashboardApp {
         JPanel panel = new JPanel(new BorderLayout(0, 16));
         panel.setOpaque(false);
 
-        RoundedPanel banner = new RoundedPanel(18, LIGHT_CREAM);
+        AdminRoundedPanel banner = new AdminRoundedPanel(18, LIGHT_CREAM);
         banner.setLayout(new BorderLayout());
         banner.setBorder(new EmptyBorder(15, 20, 15, 20));
         JLabel heading = new JLabel(title);
@@ -88,8 +90,8 @@ public class AdminDashboardApp {
         return panel;
     }
 
-    static RoundedPanel whiteCard() {
-        RoundedPanel panel = new RoundedPanel(18, WHITE);
+    static AdminRoundedPanel whiteCard() {
+        AdminRoundedPanel panel = new AdminRoundedPanel(18, WHITE);
         panel.setLayout(new BorderLayout(0, 12));
         panel.setBorder(new EmptyBorder(17, 18, 17, 18));
         return panel;
@@ -145,7 +147,7 @@ public class AdminDashboardApp {
         return panel;
     }
 
-    static void showDialog(String title, JPanel form, Runnable onSave) {
+    static void showDialog(String title, JPanel form, BooleanSupplier onSave) {
         JDialog dialog = new JDialog(frame, title, Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setSize(440, 560);
@@ -172,8 +174,7 @@ public class AdminDashboardApp {
         JButton save = button("Simpan", SAGE_GREEN);
         cancel.addActionListener(e -> dialog.dispose());
         save.addActionListener(e -> {
-            onSave.run();
-            dialog.dispose();
+            if (onSave.getAsBoolean()) dialog.dispose();
         });
         actions.add(cancel);
         actions.add(save);
@@ -199,8 +200,19 @@ public class AdminDashboardApp {
         JOptionPane.showMessageDialog(frame, message, "Informasi", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    static int idFromLabel(String value, String prefix) {
+        return Integer.parseInt(value.substring(prefix.length()));
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(AdminDashboardApp::createAndShowGUI);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                Database.initialize();
+                createAndShowGUI();
+            } catch (SQLException ex) {
+                BukaBukuApp.showDatabaseError(null, ex);
+            }
+        });
     }
 
     static void createAndShowGUI() {
@@ -272,6 +284,18 @@ public class AdminDashboardApp {
 
     static void switchMenu(String page) {
         cardLayout.show(content, page);
+        for (Component component : content.getComponents()) {
+            if ("Books".equals(page) && component instanceof BookPanel) {
+                ((BookPanel) component).loadData();
+                ((BookPanel) component).updateStats();
+            } else if ("Users".equals(page) && component instanceof UserPanel) {
+                ((UserPanel) component).loadData();
+                ((UserPanel) component).updateStats();
+            } else if ("Orders".equals(page) && component instanceof OrderPanel) {
+                ((OrderPanel) component).loadData();
+                ((OrderPanel) component).updateStats();
+            }
+        }
         resetMenu(navUsers);
         resetMenu(navBooks);
         resetMenu(navOrders);
@@ -309,7 +333,7 @@ public class AdminDashboardApp {
             );
             add(pageHeader("Katalog & Stok Buku", stats), BorderLayout.NORTH);
 
-            RoundedPanel card = whiteCard();
+            AdminRoundedPanel card = whiteCard();
             JPanel toolbar = new JPanel(new BorderLayout());
             toolbar.setOpaque(false);
             JLabel section = new JLabel("Daftar Buku");
@@ -348,22 +372,14 @@ public class AdminDashboardApp {
         }
 
         void loadData() {
-            Object[][] books = {
-                    {"assets/Bumi.jpeg", "BK-101", "Bumi", "Tere Liye", "Fiksi Petualangan", 15, 92000},
-                    {"assets/Hujan.jpeg", "BK-102", "Hujan", "Tere Liye", "Fiksi Ilmiah & Romansa", 8, 90000},
-                    {"assets/SiAnakCahaya.jpg", "BK-103", "Si Anak Cahaya", "Tere Liye", "Fiksi Inspiratif", 3, 85000},
-                    {"assets/GuruAini.png", "BK-104", "Guru Aini", "Andrea Hirata", "Fiksi Pendidikan", 20, 92000},
-                    {"assets/Negeri5Menara.jpg", "BK-105", "Negeri 5 Menara", "A. Fuadi", "Fiksi Inspiratif", 12, 110000},
-                    {"assets/LonelinessIsMyBestFriend.jpg", "BK-106", "Loneliness Is My Best Friend", "Alvi Syahrin", "Self Improvement", 4, 94000},
-                    {"assets/OverthinkingIsMyHobby,AndIHateIt.jpg", "BK-107", "Overthinking Is My Hobby", "Alvi Syahrin", "Self Improvement", 18, 94000},
-                    {"assets/LaskarPelangi.jpg", "BK-108", "Laskar Pelangi", "Andrea Hirata", "Fiksi Pendidikan", 25, 90000},
-                    {"assets/AyahkuBukanPembohong.jpg", "BK-109", "Ayahku (Bukan) Pembohong", "Tere Liye", "Fiksi Inspiratif", 10, 85000},
-                    {"assets/MogaBundaDisayangAllah.jpeg", "BK-110", "Moga Bunda Disayang Allah", "Tere Liye", "Fiksi Inspiratif", 7, 85000},
-                    {"assets/Janji.jpeg", "BK-111", "Janji", "Tere Liye", "Fiksi Psikologis", 14, 90000},
-                    {"assets/DiaAdalahKakakku.jpg", "BK-112", "Dia adalah Kakakku", "Tere Liye", "Drama Keluarga", 2, 85000}
-            };
-            for (Object[] b : books) {
-                model.addRow(new Object[]{b[0], b[1], b[2], b[3], b[4], b[5], rupiah((int)b[6]), "Aksi"});
+            model.setRowCount(0);
+            try {
+                for (Book book : Database.getBooks()) {
+                    model.addRow(new Object[]{book.imagePath, Database.bookNumber(book.id), book.title,
+                            book.author, book.category, book.stock, rupiah(book.price), "Aksi"});
+                }
+            } catch (SQLException ex) {
+                showMessage("Gagal memuat buku: " + ex.getMessage());
             }
         }
 
@@ -411,25 +427,28 @@ public class AdminDashboardApp {
                     int s = Integer.parseInt(stock.getText().trim());
                     long p = Long.parseLong(price.getText().trim());
                     if (s < 0 || p < 0) throw new IllegalArgumentException("Stok dan harga tidak boleh negatif.");
+                    if (p > Integer.MAX_VALUE) throw new IllegalArgumentException("Harga terlalu besar.");
 
+                    int id = editing ? idFromLabel(model.getValueAt(row, 1).toString(), "BK-") : 0;
+                    Book book = new Book(id, title.getText().trim(), author.getText().trim(),
+                            category.getSelectedItem().toString(), (int) p, image.getText().trim(),
+                            "", s);
                     if (editing) {
-                        model.setValueAt(image.getText(), row, 0);
-                        model.setValueAt(title.getText().trim(), row, 2);
-                        model.setValueAt(author.getText().trim(), row, 3);
-                        model.setValueAt(category.getSelectedItem(), row, 4);
-                        model.setValueAt(s, row, 5);
-                        model.setValueAt(rupiah(p), row, 6);
+                        Database.updateBook(book);
                     } else {
-                        String id = String.format("BK-%03d", 101 + model.getRowCount());
-                        model.addRow(new Object[]{image.getText(), id, title.getText().trim(),
-                                author.getText().trim(), category.getSelectedItem(), s, rupiah(p), "Aksi"});
+                        id = Database.insertBook(book);
                     }
+                    loadData();
                     updateStats();
+                    return true;
                 } catch (NumberFormatException ex) {
                     showMessage("Stok dan harga harus berupa angka.");
                 } catch (IllegalArgumentException ex) {
                     showMessage(ex.getMessage());
+                } catch (SQLException ex) {
+                    showMessage("Gagal menyimpan buku: " + ex.getMessage());
                 }
+                return false;
             });
         }
 
@@ -439,8 +458,13 @@ public class AdminDashboardApp {
             int answer = JOptionPane.showConfirmDialog(frame, "Hapus buku ini?", "Konfirmasi",
                     JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                model.removeRow(row);
-                updateStats();
+                try {
+                    Database.deleteBook(idFromLabel(model.getValueAt(row, 1).toString(), "BK-"));
+                    loadData();
+                    updateStats();
+                } catch (SQLException ex) {
+                    showMessage("Gagal menghapus buku: " + ex.getMessage());
+                }
             }
         }
 
@@ -477,7 +501,7 @@ public class AdminDashboardApp {
                     statCard("Total Admin", admins, SAGE_GREEN));
             add(pageHeader("Manajemen Pengguna", stats), BorderLayout.NORTH);
 
-            RoundedPanel card = whiteCard();
+            AdminRoundedPanel card = whiteCard();
             JPanel toolbar = new JPanel(new BorderLayout());
             toolbar.setOpaque(false);
             JLabel heading = new JLabel("Daftar Pengguna");
@@ -499,15 +523,27 @@ public class AdminDashboardApp {
             card.add(new JScrollPane(table), BorderLayout.CENTER);
             add(card, BorderLayout.CENTER);
 
-            model.addRow(new Object[]{"USR-001", "Syifa Nazira", "syifa@bukabuku.com", "Admin", "Aktif", "Aksi"});
-            model.addRow(new Object[]{"USR-002", "Gramedia", "gramedia@seller.com", "Penjual", "Aktif", "Aksi"});
-            model.addRow(new Object[]{"USR-003", "Budi Santoso", "budi@gmail.com", "Pelanggan", "Nonaktif", "Aksi"});
+            loadData();
             updateStats();
+        }
+
+        void loadData() {
+            model.setRowCount(0);
+            try {
+                for (Database.UserAccount user : Database.getUsers()) {
+                    model.addRow(new Object[]{Database.userNumber(user.id), user.fullName, user.email,
+                            user.role, user.status, "Aksi"});
+                }
+            } catch (SQLException ex) {
+                showMessage("Gagal memuat pengguna: " + ex.getMessage());
+            }
         }
 
         void openUserDialog(int row) {
             boolean editing = row >= 0;
             JTextField name = field(), email = field();
+            JTextField username = field();
+            JPasswordField password = new JPasswordField();
             JComboBox<String> role = combo("Pelanggan", "Penjual", "Admin");
             JComboBox<String> status = combo("Aktif", "Nonaktif");
 
@@ -520,6 +556,10 @@ public class AdminDashboardApp {
 
             JPanel form = formPanel();
             form.add(formField("Nama Lengkap", name)); addGap(form);
+            if (!editing) {
+                form.add(formField("Username", username)); addGap(form);
+                form.add(formField("Password (minimal 8 karakter)", password)); addGap(form);
+            }
             form.add(formField("Email", email)); addGap(form);
             form.add(formField("Role", role)); addGap(form);
             form.add(formField("Status", status));
@@ -527,19 +567,29 @@ public class AdminDashboardApp {
             showDialog(editing ? "Edit Pengguna" : "Tambah Pengguna", form, () -> {
                 if (name.getText().trim().isEmpty() || email.getText().trim().isEmpty()) {
                     showMessage("Nama dan email wajib diisi.");
-                    return;
+                    return false;
                 }
-                if (editing) {
-                    model.setValueAt(name.getText().trim(), row, 1);
-                    model.setValueAt(email.getText().trim(), row, 2);
-                    model.setValueAt(role.getSelectedItem(), row, 3);
-                    model.setValueAt(status.getSelectedItem(), row, 4);
-                } else {
-                    String id = String.format("USR-%03d", model.getRowCount() + 1);
-                    model.addRow(new Object[]{id, name.getText().trim(), email.getText().trim(),
-                            role.getSelectedItem(), status.getSelectedItem(), "Aksi"});
+                try {
+                    if (editing) {
+                        Database.updateUser(idFromLabel(model.getValueAt(row, 0).toString(), "USR-"),
+                                name.getText().trim(), email.getText().trim(),
+                                role.getSelectedItem().toString(), status.getSelectedItem().toString());
+                    } else {
+                        if (username.getText().trim().isEmpty()) {
+                            showMessage("Username wajib diisi.");
+                            return false;
+                        }
+                        Database.createUser(name.getText().trim(), username.getText().trim(),
+                                email.getText().trim(), new String(password.getPassword()),
+                                role.getSelectedItem().toString(), status.getSelectedItem().toString());
+                    }
+                    loadData();
+                    updateStats();
+                    return true;
+                } catch (SQLException ex) {
+                    showMessage("Gagal menyimpan pengguna: " + ex.getMessage());
+                    return false;
                 }
-                updateStats();
             });
         }
 
@@ -547,8 +597,13 @@ public class AdminDashboardApp {
             int answer = JOptionPane.showConfirmDialog(frame, "Hapus pengguna ini?", "Konfirmasi",
                     JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                model.removeRow(row);
-                updateStats();
+                try {
+                    Database.deleteUser(idFromLabel(model.getValueAt(row, 0).toString(), "USR-"));
+                    loadData();
+                    updateStats();
+                } catch (SQLException ex) {
+                    showMessage("Gagal menghapus pengguna: " + ex.getMessage());
+                }
             }
         }
 
@@ -583,7 +638,7 @@ public class AdminDashboardApp {
                     statCard("Pesanan Selesai", completed, SAGE_GREEN));
             add(pageHeader("Manajemen Pesanan", stats), BorderLayout.NORTH);
 
-            RoundedPanel card = whiteCard();
+            AdminRoundedPanel card = whiteCard();
             JPanel toolbar = new JPanel(new BorderLayout());
             toolbar.setOpaque(false);
             JLabel heading = new JLabel("Daftar Pesanan");
@@ -606,10 +661,25 @@ public class AdminDashboardApp {
             card.add(new JScrollPane(table), BorderLayout.CENTER);
             add(card, BorderLayout.CENTER);
 
-            model.addRow(new Object[]{"ORD-001", "Budi Santoso", "Laskar Pelangi (x1)", rupiah(90000), "Pending", "Aksi"});
-            model.addRow(new Object[]{"ORD-002", "Siti Aminah", "Atomic Habits (x2)", rupiah(216000), "Diproses", "Aksi"});
-            model.addRow(new Object[]{"ORD-003", "Jelita Hati", "Bumi (x1)", rupiah(92000), "Selesai", "Aksi"});
+            loadData();
             updateStats();
+        }
+
+        void loadData() {
+            model.setRowCount(0);
+            try {
+                for (Order order : Database.getOrders(null)) {
+                    StringBuilder detail = new StringBuilder();
+                    for (CartItem item : order.items) {
+                        if (detail.length() > 0) detail.append(", ");
+                        detail.append(item.book.title).append(" (x").append(item.qty).append(")");
+                    }
+                    model.addRow(new Object[]{order.id, order.customerName, detail.toString(),
+                            rupiah(order.total), order.status, "Aksi"});
+                }
+            } catch (SQLException ex) {
+                showMessage("Gagal memuat pesanan: " + ex.getMessage());
+            }
         }
 
         void openOrderDialog(int row) {
@@ -637,22 +707,20 @@ public class AdminDashboardApp {
                     long amount = Long.parseLong(price.getText().trim());
                     if (amount < 0) throw new IllegalArgumentException("Harga tidak boleh negatif.");
 
-                    if (editing) {
-                        model.setValueAt(customer.getText().trim(), row, 1);
-                        model.setValueAt(item.getText().trim(), row, 2);
-                        model.setValueAt(rupiah(amount), row, 3);
-                        model.setValueAt(status.getSelectedItem(), row, 4);
-                    } else {
-                        String id = String.format("ORD-%03d", model.getRowCount() + 1);
-                        model.addRow(new Object[]{id, customer.getText().trim(), item.getText().trim(),
-                                rupiah(amount), status.getSelectedItem(), "Aksi"});
-                    }
+                    String id = editing ? model.getValueAt(row, 0).toString() : null;
+                    Database.saveAdminOrder(id, customer.getText().trim(), item.getText().trim(),
+                            amount, status.getSelectedItem().toString());
+                    loadData();
                     updateStats();
+                    return true;
                 } catch (NumberFormatException ex) {
                     showMessage("Total harga harus berupa angka.");
                 } catch (IllegalArgumentException ex) {
                     showMessage(ex.getMessage());
+                } catch (SQLException ex) {
+                    showMessage("Gagal menyimpan pesanan: " + ex.getMessage());
                 }
+                return false;
             });
         }
 
@@ -660,8 +728,13 @@ public class AdminDashboardApp {
             int answer = JOptionPane.showConfirmDialog(frame, "Hapus pesanan ini?", "Konfirmasi",
                     JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                model.removeRow(row);
-                updateStats();
+                try {
+                    Database.deleteOrder(model.getValueAt(row, 0).toString());
+                    loadData();
+                    updateStats();
+                } catch (SQLException ex) {
+                    showMessage("Gagal menghapus pesanan: " + ex.getMessage());
+                }
             }
         }
 
@@ -807,11 +880,11 @@ public class AdminDashboardApp {
     }
 }
 
-class RoundedPanel extends JPanel {
+class AdminRoundedPanel extends JPanel {
     private final int radius;
     private final Color background;
 
-    RoundedPanel(int radius, Color background) {
+    AdminRoundedPanel(int radius, Color background) {
         this.radius = radius;
         this.background = background;
         setOpaque(false);

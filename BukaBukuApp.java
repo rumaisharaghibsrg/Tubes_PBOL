@@ -8,9 +8,8 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.text.SimpleDateFormat;
+import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class BukaBukuApp {
@@ -35,36 +34,27 @@ public class BukaBukuApp {
     static List<CartItem> cartData = new ArrayList<>();
     static List<Order> orderHistory = new ArrayList<>();
     static Book[] allBooks;
+    static Database.UserAccount currentUser;
 
     static JLabel navKatalog, navWishlist, navKeranjang, navRiwayat, navLogin, navDaftar;
     static JPanel katalogGridPanel, wishlistGridPanel, cartListPanel, riwayatListPanel;
     static JLabel labelTotalHarga;
 
     public static void main(String[] args) {
-        initData();
-        SwingUtilities.invokeLater(() -> createAndShowGUI());
+        SwingUtilities.invokeLater(() -> {
+            try {
+                Database.initialize();
+                initData();
+                createAndShowGUI();
+            } catch (SQLException ex) {
+                showDatabaseError(null, ex);
+            }
+        });
     }
 
-    static void initData() {
-        allBooks = new Book[] {
-            new Book("Bumi", "Tere Liye", "Fiksi Petualangan", 92000, "assets/Bumi.jpeg", "Raib adalah remaja SMA yang memiliki kemampuan unik bisa menghilang hanya dengan menutup wajahnya dengan telapak tangan..."),
-            new Book("Hujan", "Tere Liye", "Fiksi Ilmiah & Romansa", 90000, "assets/Hujan.jpeg", "Hujan karya Tere Liye menceritakan tentang Lail, seorang gadis yang kehilangan orang tuanya akibat bencana besar..."),
-            new Book("Si Anak Cahaya", "Tere Liye", "Fiksi Inspiratif", 85000, "assets/SiAnakCahaya.jpg", "Mengisahkan Nurmas (Nung), seorang gadis kecil ceria dan tangguh dari pedalaman Sumatra..."),
-            new Book("Guru Aini", "Andrea Hirata", "Fiksi Pendidikan", 92000, "assets/GuruAini.png", "Cerita berfokus pada Desi, seorang guru matematika idealis yang rela ditempatkan di pelosok demi mencari..."),
-            new Book("Negeri 5 Menara", "A. Fuadi", "Fiksi Inspiratif", 110000, "assets/Negeri5Menara.jpg", "Alif adalah seorang remaja dari Maninjau yang terpaksa merantau ke Jawa untuk belajar di Pondok Madani..."),
-            new Book("Loneliness Is My Best Friend", "Alvi Syahrin", "Self Improvement", 94000, "assets/LonelinessIsMyBestFriend.jpg", "Buku ini membahas fenomena kesepian yang sering dialami oleh orang dewasa, mulai dari perasaan tidak memiliki teman..."),
-            new Book("Overthinking Is My Hobby", "Alvi Syahrin", "Self Improvement", 94000, "assets/OverthinkingIsMyHobby,AndIHateIt.jpg", "Buku ini hadir sebagai panduan untuk membantu pembaca meredam suara bising di dalam kepala akibat kebiasaan..."),
-            new Book("Laskar Pelangi", "Andrea Hirata", "Fiksi Pendidikan", 90000, "assets/LaskarPelangi.jpg", "Cerita dimulai di kampung Belitong, di mana sebuah sekolah Muhammadiyah yang nyaris roboh sedang menunggu murid..."),
-            new Book("Ayahku (Bukan) Pembohong", "Tere Liye", "Fiksi Inspiratif", 85000, "assets/AyahkuBukanPembohong.jpg", "Dam tumbuh besar dengan dongeng-dongeng luar biasa dari ayahnya tentang Lembah Bukhara, suku Penguasa Angin..."),
-            new Book("Moga Bunda Disayang Allah", "Tere Liye", "Drama Inspiratif", 85000, "assets/MogaBundaDisayangAllah.jpeg", "Melati adalah seorang gadis kecil yang kehilangan penglihatan, pendengaran, serta kemampuan bicaranya akibat kecelakaan..."),
-            new Book("Janji", "Tere Liye", "Fiksi Psikologis", 90000, "assets/Janji.jpeg", "Cerita berfokus pada tiga santri nakal bernama Hasan, Kaharuddin, dan Baso. Sebagai hukuman atas kenakalan mereka..."),
-            new Book("Dia adalah Kakakku", "Tere Liye", "Drama Keluarga", 85000, "assets/DiaAdalahKakakku.jpg", "Mengisahkan perjuangan heroik Laisa, seorang gadis sederhana yang rela mengorbankan sekolah dan masa depannya...")
-        };
-
-        // Dummy Data Riwayat
-        List<CartItem> dummyItems = new ArrayList<>();
-        dummyItems.add(new CartItem(allBooks[3], 3));
-        orderHistory.add(new Order("#1", "3 November 2026 pukul 18.19", dummyItems, 276000, "BERHASIL"));
+    static void initData() throws SQLException {
+        allBooks = Database.getBooks().toArray(new Book[0]);
+        orderHistory = currentUser == null ? new ArrayList<>() : Database.getOrders(currentUser.id);
     }
 
     static void createAndShowGUI() {
@@ -155,6 +145,20 @@ public class BukaBukuApp {
     // ================== LOGIKA NAVIGASI & UPDATE ==================
     static void navigateTo(String page, JFrame frame) {
         activeMenu = page;
+        if ("Katalog".equals(page)) {
+            try {
+                allBooks = Database.getBooks().toArray(new Book[0]);
+            } catch (SQLException ex) {
+                showDatabaseError(frame, ex);
+            }
+        }
+        if ("Riwayat".equals(page) && currentUser != null) {
+            try {
+                orderHistory = Database.getOrders(currentUser.id);
+            } catch (SQLException ex) {
+                showDatabaseError(frame, ex);
+            }
+        }
         if (page.equals("Katalog") || page.equals("Wishlist") || page.equals("Keranjang") || page.equals("Riwayat")) {
             refreshGrids(frame);
         }
@@ -257,17 +261,28 @@ public class BukaBukuApp {
     }
 
     static void addToCart(Book book, JFrame frame) {
-        boolean found = false;
+        CartItem existing = null;
         for (CartItem item : cartData) {
-            if (item.book.title.equals(book.title)) {
-                item.qty++;
-                found = true; break;
+            if (item.book.id == book.id) {
+                existing = item;
+                break;
             }
         }
-        if (!found) cartData.add(new CartItem(book, 1));
+        if (book.stock <= 0 || (existing != null && existing.qty >= book.stock)) {
+            showNotificationToast(frame, "Stok buku tidak mencukupi.");
+            return;
+        }
+        if (existing == null) cartData.add(new CartItem(book, 1));
+        else existing.qty++;
         
         showNotificationToast(frame, book.title + " berhasil masuk keranjang!");
         updateNavbar();
+    }
+
+    static void showDatabaseError(Component parent, Exception ex) {
+        JOptionPane.showMessageDialog(parent,
+                "Operasi database tidak berhasil.\n" + ex.getMessage(),
+                "Operasi Database Gagal", JOptionPane.ERROR_MESSAGE);
     }
 
     static void showNotificationToast(JFrame frame, String message) {
@@ -361,12 +376,12 @@ public class BukaBukuApp {
         // Pesanan Berhasil
         JPanel row2 = new JPanel(new BorderLayout());
         row2.setOpaque(false);
-        JLabel lblSuccess = new JLabel("Pesanan Berhasil");
+        JLabel lblSuccess = new JLabel("Menunggu Diproses");
         lblSuccess.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblSuccess.setForeground(TEXT_MUTED);
-        int successCount = 0;
-        for(Order o : orderHistory) if(o.status.equals("BERHASIL")) successCount++;
-        JLabel valSuccess = new JLabel(String.valueOf(successCount));
+        int pendingCount = 0;
+        for (Order o : orderHistory) if ("Pending".equals(o.status)) pendingCount++;
+        JLabel valSuccess = new JLabel(String.valueOf(pendingCount));
         valSuccess.setFont(new Font("Segoe UI", Font.BOLD, 20));
         valSuccess.setForeground(new Color(16, 185, 129));
         row2.add(lblSuccess, BorderLayout.WEST);
@@ -375,7 +390,7 @@ public class BukaBukuApp {
         summaryPanel.add(Box.createRigidArea(new Dimension(0, 15)));
         
         // Total Pengeluaran
-        int totalSpent = 0;
+        long totalSpent = 0;
         for(Order o : orderHistory) totalSpent += o.total;
         
         JPanel row3 = new JPanel(new BorderLayout());
@@ -736,6 +751,10 @@ public class BukaBukuApp {
         });
         
         btnPlus.addActionListener(e -> {
+            if (item.qty >= item.book.stock) {
+                showNotificationToast(frame, "Stok buku tidak mencukupi.");
+                return;
+            }
             item.qty++; 
             lblQty.setText(String.valueOf(item.qty)); 
             subtotal.setText("<html><div style='text-align: right;'><span style='font-size:10px;color:gray;'>Subtotal</span><br/><b>" + 
@@ -926,8 +945,10 @@ public class BukaBukuApp {
             public void mouseClicked(MouseEvent e) { new ModernDetailDialog(parentFrame, book).setVisible(true); }
         });
 
-        RoundedButton btnAdd = new RoundedButton("Tambah ke Keranjang", COLOR_DARK_GREEN, Color.WHITE);
+        RoundedButton btnAdd = new RoundedButton(
+                book.stock > 0 ? "Tambah ke Keranjang" : "Stok Habis", COLOR_DARK_GREEN, Color.WHITE);
         btnAdd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36)); 
+        btnAdd.setEnabled(book.stock > 0);
         btnAdd.addActionListener(e -> addToCart(book, parentFrame));
         
         JPanel priceHeartPanel = new JPanel(new BorderLayout());
@@ -959,6 +980,10 @@ public class BukaBukuApp {
         });
 
         priceHeartPanel.add(priceLabel, BorderLayout.WEST);
+        JLabel stockLabel = new JLabel("Stok: " + book.stock);
+        stockLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        stockLabel.setForeground(TEXT_MUTED);
+        priceHeartPanel.add(stockLabel, BorderLayout.CENTER);
         priceHeartPanel.add(heartLabel, BorderLayout.EAST);
 
         catLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -1005,13 +1030,30 @@ public class BukaBukuApp {
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel emailWrapper = createInputWrapper("Email", new JTextField());
-        JPanel passWrapper = createInputWrapper("Password", new JPasswordField());
+        JTextField emailField = new JTextField();
+        JPasswordField passField = new JPasswordField();
+        JPanel emailWrapper = createInputWrapper("Email atau Username", emailField);
+        JPanel passWrapper = createInputWrapper("Password", passField);
 
         RoundedButton btnLogin = new RoundedButton("Login", COLOR_DARK_GREEN, Color.WHITE);
         btnLogin.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         btnLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnLogin.addActionListener(e -> navigateTo("Katalog", frame));
+        btnLogin.addActionListener(e -> {
+            try {
+                Database.UserAccount user = Database.authenticate(
+                        emailField.getText().trim(), new String(passField.getPassword()));
+                if (user == null) {
+                    showNotificationToast(frame, "Email/username atau password tidak valid.");
+                    return;
+                }
+                currentUser = user;
+                orderHistory = Database.getOrders(user.id);
+                navigateTo("Katalog", frame);
+                showNotificationToast(frame, "Selamat datang, " + user.fullName + "!");
+            } catch (SQLException ex) {
+                showDatabaseError(frame, ex);
+            }
+        });
 
         JLabel linkRegister = new JLabel("Belum punya akun? Daftar sekarang.");
         linkRegister.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -1054,18 +1096,37 @@ public class BukaBukuApp {
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel nameWrapper = createInputWrapper("Nama Lengkap", new JTextField());
-        JPanel userWrapper = createInputWrapper("Username", new JTextField());
-        JPanel emailWrapper = createInputWrapper("Email", new JTextField());
-        JPanel passWrapper = createInputWrapper("Password", new JPasswordField());
+        JTextField nameField = new JTextField();
+        JTextField usernameField = new JTextField();
+        JTextField emailField = new JTextField();
+        JPasswordField passwordField = new JPasswordField();
+        JPanel nameWrapper = createInputWrapper("Nama Lengkap", nameField);
+        JPanel userWrapper = createInputWrapper("Username", usernameField);
+        JPanel emailWrapper = createInputWrapper("Email", emailField);
+        JPanel passWrapper = createInputWrapper("Password (minimal 8 karakter)", passwordField);
 
         RoundedButton btnDaftar = new RoundedButton("Buat Akun", COLOR_DARK_GREEN, Color.WHITE);
         btnDaftar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         btnDaftar.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         btnDaftar.addActionListener(e -> {
-            showNotificationToast(frame, "Pendaftaran berhasil! Silakan login.");
-            navigateTo("Login", frame);
+            if (nameField.getText().trim().isEmpty() || usernameField.getText().trim().isEmpty()
+                    || emailField.getText().trim().isEmpty()) {
+                showNotificationToast(frame, "Nama, username, dan email wajib diisi.");
+                return;
+            }
+            if (passwordField.getPassword().length < 8) {
+                showNotificationToast(frame, "Password harus memiliki minimal 8 karakter.");
+                return;
+            }
+            try {
+                Database.registerUser(nameField.getText().trim(), usernameField.getText().trim(),
+                        emailField.getText().trim(), new String(passwordField.getPassword()));
+                showNotificationToast(frame, "Pendaftaran berhasil! Silakan login.");
+                navigateTo("Login", frame);
+            } catch (SQLException ex) {
+                showDatabaseError(frame, ex);
+            }
         });
 
         JLabel linkLogin = new JLabel("Sudah punya akun? Masuk di sini.");
@@ -1149,11 +1210,27 @@ public class BukaBukuApp {
 
 // ================== DATA STRUCTURES ==================
 class Book {
+    int id, stock;
     String title, author, category, imagePath, description;
     int price;
-    public Book(String title, String author, String category, int price, String imagePath, String description) {
+    public Book(int id, String title, String author, String category, int price,
+                String imagePath, String description, int stock) {
+        this.id = id; this.stock = stock;
         this.title = title; this.author = author; this.category = category;
         this.price = price; this.imagePath = imagePath; this.description = description;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof Book)) return false;
+        Book book = (Book) other;
+        return id > 0 && id == book.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return id > 0 ? Integer.hashCode(id) : System.identityHashCode(this);
     }
 }
 
@@ -1168,9 +1245,10 @@ class CartItem {
 
 class Order {
     String id, date, status;
+    String customerName = "";
     List<CartItem> items;
-    int total;
-    public Order(String id, String date, List<CartItem> items, int total, String status) {
+    long total;
+    public Order(String id, String date, List<CartItem> items, long total, String status) {
         this.id = id; this.date = date; this.items = new ArrayList<>(items); 
         this.total = total; this.status = status;
     }
@@ -1242,9 +1320,10 @@ class CheckoutDialog extends JDialog {
         bodyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Form Pengiriman
-        JTextField txtNama = new JTextField("Syifa Nazira");
-        JTextField txtHp = new JTextField("081234567890");
-        JTextArea txtAlamat = new JTextArea("Jl. Universitas No. 9, Medan", 2, 20);
+        JTextField txtNama = new JTextField(
+                BukaBukuApp.currentUser == null ? "" : BukaBukuApp.currentUser.fullName);
+        JTextField txtHp = new JTextField();
+        JTextArea txtAlamat = new JTextArea(2, 20);
         txtAlamat.setLineWrap(true);
         txtAlamat.setWrapStyleWord(true);
         txtAlamat.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -1288,7 +1367,7 @@ class CheckoutDialog extends JDialog {
         cbMethod.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         cbMethod.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel lblInfoPay = new JLabel("No. Virtual Account: 8801-2514-0212");
+        JLabel lblInfoPay = new JLabel("Pembayaran belum otomatis; pesanan akan menunggu konfirmasi admin.");
         lblInfoPay.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblInfoPay.setForeground(BukaBukuApp.COLOR_DARK_GREEN);
         lblInfoPay.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -1296,13 +1375,13 @@ class CheckoutDialog extends JDialog {
         cbMethod.addActionListener(e -> {
             String selected = (String) cbMethod.getSelectedItem();
             if (selected.contains("BCA")) {
-                lblInfoPay.setText("No. Virtual Account BCA: 8801-2514-0212");
+                lblInfoPay.setText("Transfer BCA belum terhubung; pesanan menunggu konfirmasi admin.");
             } else if (selected.contains("Mandiri")) {
-                lblInfoPay.setText("No. Virtual Account Mandiri: 8901-7788-9900");
+                lblInfoPay.setText("Transfer Mandiri belum terhubung; pesanan menunggu konfirmasi admin.");
             } else if (selected.contains("QRIS")) {
-                lblInfoPay.setText("Silakan Scan Kode QRIS BukaBuku setelah konfirmasi");
+                lblInfoPay.setText("QRIS belum terhubung; pesanan menunggu konfirmasi admin.");
             } else {
-                lblInfoPay.setText("Siapkan uang tunai sesuai total harga saat kurir sampai");
+                lblInfoPay.setText("Pesanan COD menunggu konfirmasi admin.");
             }
         });
 
@@ -1346,20 +1425,28 @@ class CheckoutDialog extends JDialog {
         btnPay.setFont(new Font("Segoe UI", Font.BOLD, 15));
         
         btnPay.addActionListener(e -> {
-            if (txtNama.getText().trim().isEmpty() || txtAlamat.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Mohon lengkapi Nama dan Alamat pengiriman!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            if (txtNama.getText().trim().isEmpty() || txtHp.getText().trim().isEmpty()
+                    || txtAlamat.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Mohon lengkapi Nama, Telepon, dan Alamat pengiriman!",
+                        "Peringatan", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            String dateStr = new SimpleDateFormat("d MMMM yyyy 'pukul' HH.mm").format(new Date());
-            Order newOrder = new Order("#" + (BukaBukuApp.orderHistory.size() + 1), dateStr, selectedItems, grandTotal, "BERHASIL");
-            BukaBukuApp.orderHistory.add(0, newOrder);
-            
-            BukaBukuApp.cartData.removeAll(selectedItems);
-            
+            try {
+                Order newOrder = Database.createOrder(txtNama.getText().trim(), txtHp.getText().trim(),
+                        txtAlamat.getText().trim(), String.valueOf(cbMethod.getSelectedItem()),
+                        selectedItems, BukaBukuApp.currentUser == null ? null : BukaBukuApp.currentUser.id);
+                BukaBukuApp.orderHistory.add(0, newOrder);
+                BukaBukuApp.cartData.removeAll(selectedItems);
+                for (CartItem item : selectedItems) item.book.stock -= item.qty;
+            } catch (SQLException ex) {
+                BukaBukuApp.showDatabaseError(parent, ex);
+                return;
+            }
+
             dispose();
             
-            BukaBukuApp.showNotificationToast(parent, "Pembayaran Berhasil! Pesanan diproses.");
+            BukaBukuApp.showNotificationToast(parent, "Pesanan tersimpan dan menunggu diproses.");
             BukaBukuApp.navigateTo("Riwayat", parent);
         });
 
