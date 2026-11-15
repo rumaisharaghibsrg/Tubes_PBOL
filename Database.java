@@ -134,15 +134,16 @@ final class Database {
     }
 
     static void updateBook(Book book) throws SQLException {
-        String sql = "UPDATE books SET title=?, author=?, category=?, price=?, image_path=?, stock=? WHERE id=?";
+        String sql = "UPDATE books SET title=?, author=?, category=?, price=?, image_path=?, description=?, stock=? WHERE id=?";
         try (Connection connection = connect(); PreparedStatement update = connection.prepareStatement(sql)) {
             update.setString(1, book.title);
             update.setString(2, book.author);
             update.setString(3, book.category);
             update.setInt(4, book.price);
             update.setString(5, book.imagePath);
-            update.setInt(6, book.stock);
-            update.setInt(7, book.id);
+            update.setString(6, book.description);
+            update.setInt(7, book.stock);
+            update.setInt(8, book.id);
             if (update.executeUpdate() != 1) throw new SQLException("Buku tidak ditemukan.");
         }
     }
@@ -158,10 +159,25 @@ final class Database {
     }
 
     static void deleteBook(int id) throws SQLException {
-        try (Connection connection = connect();
-             PreparedStatement delete = connection.prepareStatement("DELETE FROM books WHERE id=?")) {
-            delete.setInt(1, id);
-            if (delete.executeUpdate() != 1) throw new SQLException("Buku tidak ditemukan.");
+        try (Connection connection = connect()) {
+            connection.setAutoCommit(false);
+            try {
+                try (PreparedStatement updateItems = connection.prepareStatement(
+                        "UPDATE order_items SET book_id=NULL WHERE book_id=?")) {
+                    updateItems.setInt(1, id);
+                    updateItems.executeUpdate();
+                }
+                try (PreparedStatement delete = connection.prepareStatement("DELETE FROM books WHERE id=?")) {
+                    delete.setInt(1, id);
+                    if (delete.executeUpdate() != 1) throw new SQLException("Buku tidak ditemukan.");
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
         }
     }
 
@@ -339,13 +355,22 @@ final class Database {
 
     private static List<CartItem> getOrderItems(Connection connection, int orderId) throws SQLException {
         List<CartItem> items = new ArrayList<>();
-        String sql = "SELECT title, quantity, unit_price FROM order_items WHERE order_id=? ORDER BY id";
+        String sql = "SELECT oi.book_id, oi.title, oi.quantity, oi.unit_price, "
+                + "COALESCE(b.image_path, '') AS image_path, "
+                + "COALESCE(b.author, '') AS author, "
+                + "COALESCE(b.category, '') AS category "
+                + "FROM order_items oi LEFT JOIN books b ON oi.book_id = b.id "
+                + "WHERE oi.order_id=? ORDER BY oi.id";
         try (PreparedStatement query = connection.prepareStatement(sql)) {
             query.setInt(1, orderId);
             try (ResultSet rows = query.executeQuery()) {
                 while (rows.next()) {
-                    Book book = new Book(0, rows.getString("title"), "", "", rows.getInt("unit_price"),
-                            "", "", 0);
+                    int bookId = rows.getInt("book_id");
+                    String imagePath = rows.getString("image_path");
+                    String author = rows.getString("author");
+                    String category = rows.getString("category");
+                    Book book = new Book(bookId, rows.getString("title"), author, category,
+                            rows.getInt("unit_price"), imagePath, "", 0);
                     items.add(new CartItem(book, rows.getInt("quantity")));
                 }
             }
@@ -454,6 +479,13 @@ final class Database {
                             id = keys.getLong(1);
                         }
                     }
+                    try (PreparedStatement itemInsert = connection.prepareStatement(
+                            "INSERT INTO order_items (order_id, title, quantity, unit_price) VALUES (?, ?, 1, ?)")) {
+                        itemInsert.setLong(1, id);
+                        itemInsert.setString(2, item);
+                        itemInsert.setLong(3, amount);
+                        itemInsert.executeUpdate();
+                    }
                 } else {
                     id = parseId(orderId, "ORD-");
                     try (PreparedStatement update = connection.prepareStatement(
@@ -464,18 +496,22 @@ final class Database {
                         update.setLong(4, id);
                         if (update.executeUpdate() != 1) throw new SQLException("Pesanan tidak ditemukan.");
                     }
-                    try (PreparedStatement deleteItems = connection.prepareStatement(
-                            "DELETE FROM order_items WHERE order_id=?")) {
-                        deleteItems.setLong(1, id);
-                        deleteItems.executeUpdate();
+                    // Pertahankan rincian order_items jika sudah ada (cegah destructive update)
+                    try (PreparedStatement check = connection.prepareStatement(
+                            "SELECT COUNT(*) FROM order_items WHERE order_id=?")) {
+                        check.setLong(1, id);
+                        try (ResultSet rs = check.executeQuery()) {
+                            if (rs.next() && rs.getInt(1) == 0) {
+                                try (PreparedStatement itemInsert = connection.prepareStatement(
+                                        "INSERT INTO order_items (order_id, title, quantity, unit_price) VALUES (?, ?, 1, ?)")) {
+                                    itemInsert.setLong(1, id);
+                                    itemInsert.setString(2, item);
+                                    itemInsert.setLong(3, amount);
+                                    itemInsert.executeUpdate();
+                                }
+                            }
+                        }
                     }
-                }
-                try (PreparedStatement itemInsert = connection.prepareStatement(
-                        "INSERT INTO order_items (order_id, title, quantity, unit_price) VALUES (?, ?, 1, ?)")) {
-                    itemInsert.setLong(1, id);
-                    itemInsert.setString(2, item);
-                    itemInsert.setLong(3, amount);
-                    itemInsert.executeUpdate();
                 }
                 connection.commit();
                 return orderNumber((int) id);
@@ -498,10 +534,38 @@ final class Database {
     }
 
     static void deleteOrder(String orderId) throws SQLException {
-        try (Connection connection = connect();
-             PreparedStatement delete = connection.prepareStatement("DELETE FROM orders WHERE id=?")) {
-            delete.setLong(1, parseId(orderId, "ORD-"));
-            if (delete.executeUpdate() != 1) throw new SQLException("Pesanan tidak ditemukan.");
+        try (Connection connection = connect()) {
+            connection.setAutoCommit(false);
+            try {
+                int id = parseId(orderId, "ORD-");
+                // Kembalikan stok buku untuk pesanan yang dihapus
+                try (PreparedStatement selectItems = connection.prepareStatement(
+                        "SELECT book_id, quantity FROM order_items WHERE order_id=? AND book_id IS NOT NULL")) {
+                    selectItems.setInt(1, id);
+                    try (ResultSet rs = selectItems.executeQuery()) {
+                        while (rs.next()) {
+                            int bookId = rs.getInt("book_id");
+                            int qty = rs.getInt("quantity");
+                            try (PreparedStatement restoreStock = connection.prepareStatement(
+                                    "UPDATE books SET stock=stock+? WHERE id=?")) {
+                                restoreStock.setInt(1, qty);
+                                restoreStock.setInt(2, bookId);
+                                restoreStock.executeUpdate();
+                            }
+                        }
+                    }
+                }
+                try (PreparedStatement delete = connection.prepareStatement("DELETE FROM orders WHERE id=?")) {
+                    delete.setInt(1, id);
+                    if (delete.executeUpdate() != 1) throw new SQLException("Pesanan tidak ditemukan.");
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
         }
     }
 

@@ -6,6 +6,8 @@ import java.awt.event.*;
 import java.io.File;
 import java.sql.SQLException;
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 
@@ -150,7 +152,7 @@ public class AdminDashboardApp {
     static void showDialog(String title, JPanel form, BooleanSupplier onSave) {
         JDialog dialog = new JDialog(frame, title, Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setSize(440, 560);
+        dialog.setSize(460, 620);
         dialog.setResizable(false);
         dialog.setLocationRelativeTo(frame);
 
@@ -371,21 +373,40 @@ public class AdminDashboardApp {
             updateStats();
         }
 
+        private final List<Book> currentBooks = new ArrayList<>();
+
         void loadData() {
-            model.setRowCount(0);
-            try {
-                for (Book book : Database.getBooks()) {
-                    model.addRow(new Object[]{book.imagePath, Database.bookNumber(book.id), book.title,
-                            book.author, book.category, book.stock, rupiah(book.price), "Aksi"});
+            new SwingWorker<List<Book>, Void>() {
+                protected List<Book> doInBackground() throws Exception {
+                    return Database.getBooks();
                 }
-            } catch (SQLException ex) {
-                showMessage("Gagal memuat buku: " + ex.getMessage());
-            }
+                protected void done() {
+                    try {
+                        currentBooks.clear();
+                        currentBooks.addAll(get());
+                        model.setRowCount(0);
+                        for (Book book : currentBooks) {
+                            model.addRow(new Object[]{book.imagePath, Database.bookNumber(book.id), book.title,
+                                    book.author, book.category, book.stock, rupiah(book.price), "Aksi"});
+                        }
+                        updateStats();
+                    } catch (Exception ex) {
+                        showMessage("Gagal memuat buku: " + ex.getMessage());
+                    }
+                }
+            }.execute();
         }
 
-         void openBookDialog(int row) {
+        void openBookDialog(int row) {
             boolean editing = row >= 0;
             JTextField title = field(), author = field(), stock = field(), price = field(), image = field();
+            JTextArea description = new JTextArea(3, 20);
+            description.setLineWrap(true);
+            description.setWrapStyleWord(true);
+            description.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            JScrollPane descScroll = new JScrollPane(description);
+            descScroll.setPreferredSize(new Dimension(0, 75));
+
             JComboBox<String> category = combo("Fiksi Petualangan", "Fiksi Ilmiah & Romansa",
                     "Fiksi Inspiratif", "Fiksi Pendidikan", "Self Improvement", "Drama Keluarga", "Fiksi Psikologis");
 
@@ -396,6 +417,9 @@ public class AdminDashboardApp {
                 stock.setText(model.getValueAt(row, 5).toString());
                 price.setText(model.getValueAt(row, 6).toString().replaceAll("[^0-9]", ""));
                 image.setText(model.getValueAt(row, 0).toString());
+                if (row >= 0 && row < currentBooks.size()) {
+                    description.setText(currentBooks.get(row).description);
+                }
             } else {
                 image.setText("assets/");
             }
@@ -418,6 +442,7 @@ public class AdminDashboardApp {
             form.add(formField("Kategori", category)); addGap(form);
             form.add(formField("Stok", stock)); addGap(form);
             form.add(formField("Harga (Rp)", price)); addGap(form);
+            form.add(formField("Deskripsi Buku", descScroll)); addGap(form);
             form.add(formField("Path Foto Buku", imageRow));
 
             showDialog(editing ? "Edit Buku" : "Tambah Buku", form, () -> {
@@ -432,21 +457,31 @@ public class AdminDashboardApp {
                     int id = editing ? idFromLabel(model.getValueAt(row, 1).toString(), "BK-") : 0;
                     Book book = new Book(id, title.getText().trim(), author.getText().trim(),
                             category.getSelectedItem().toString(), (int) p, image.getText().trim(),
-                            "", s);
-                    if (editing) {
-                        Database.updateBook(book);
-                    } else {
-                        id = Database.insertBook(book);
-                    }
-                    loadData();
-                    updateStats();
+                            description.getText().trim(), s);
+
+                    new SwingWorker<Void, Void>() {
+                        protected Void doInBackground() throws Exception {
+                            if (editing) {
+                                Database.updateBook(book);
+                            } else {
+                                Database.insertBook(book);
+                            }
+                            return null;
+                        }
+                        protected void done() {
+                            try {
+                                get();
+                                loadData();
+                            } catch (Exception ex) {
+                                showMessage("Gagal menyimpan buku: " + ex.getMessage());
+                            }
+                        }
+                    }.execute();
                     return true;
                 } catch (NumberFormatException ex) {
                     showMessage("Stok dan harga harus berupa angka.");
                 } catch (IllegalArgumentException ex) {
                     showMessage(ex.getMessage());
-                } catch (SQLException ex) {
-                    showMessage("Gagal menyimpan buku: " + ex.getMessage());
                 }
                 return false;
             });
@@ -458,13 +493,21 @@ public class AdminDashboardApp {
             int answer = JOptionPane.showConfirmDialog(frame, "Hapus buku ini?", "Konfirmasi",
                     JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                try {
-                    Database.deleteBook(idFromLabel(model.getValueAt(row, 1).toString(), "BK-"));
-                    loadData();
-                    updateStats();
-                } catch (SQLException ex) {
-                    showMessage("Gagal menghapus buku: " + ex.getMessage());
-                }
+                int id = idFromLabel(model.getValueAt(row, 1).toString(), "BK-");
+                new SwingWorker<Void, Void>() {
+                    protected Void doInBackground() throws Exception {
+                        Database.deleteBook(id);
+                        return null;
+                    }
+                    protected void done() {
+                        try {
+                            get();
+                            loadData();
+                        } catch (Exception ex) {
+                            showMessage("Gagal menghapus buku: " + ex.getMessage());
+                        }
+                    }
+                }.execute();
             }
         }
 
@@ -528,15 +571,23 @@ public class AdminDashboardApp {
         }
 
         void loadData() {
-            model.setRowCount(0);
-            try {
-                for (Database.UserAccount user : Database.getUsers()) {
-                    model.addRow(new Object[]{Database.userNumber(user.id), user.fullName, user.email,
-                            user.role, user.status, "Aksi"});
+            new SwingWorker<List<Database.UserAccount>, Void>() {
+                protected List<Database.UserAccount> doInBackground() throws Exception {
+                    return Database.getUsers();
                 }
-            } catch (SQLException ex) {
-                showMessage("Gagal memuat pengguna: " + ex.getMessage());
-            }
+                protected void done() {
+                    try {
+                        model.setRowCount(0);
+                        for (Database.UserAccount user : get()) {
+                            model.addRow(new Object[]{Database.userNumber(user.id), user.fullName, user.email,
+                                    user.role, user.status, "Aksi"});
+                        }
+                        updateStats();
+                    } catch (Exception ex) {
+                        showMessage("Gagal memuat pengguna: " + ex.getMessage());
+                    }
+                }
+            }.execute();
         }
 
         void openUserDialog(int row) {
@@ -569,27 +620,42 @@ public class AdminDashboardApp {
                     showMessage("Nama dan email wajib diisi.");
                     return false;
                 }
-                try {
-                    if (editing) {
-                        Database.updateUser(idFromLabel(model.getValueAt(row, 0).toString(), "USR-"),
-                                name.getText().trim(), email.getText().trim(),
-                                role.getSelectedItem().toString(), status.getSelectedItem().toString());
-                    } else {
-                        if (username.getText().trim().isEmpty()) {
-                            showMessage("Username wajib diisi.");
-                            return false;
-                        }
-                        Database.createUser(name.getText().trim(), username.getText().trim(),
-                                email.getText().trim(), new String(password.getPassword()),
-                                role.getSelectedItem().toString(), status.getSelectedItem().toString());
-                    }
-                    loadData();
-                    updateStats();
-                    return true;
-                } catch (SQLException ex) {
-                    showMessage("Gagal menyimpan pengguna: " + ex.getMessage());
+                if (!editing && username.getText().trim().isEmpty()) {
+                    showMessage("Username wajib diisi.");
                     return false;
                 }
+                if (!editing && password.getPassword().length < 8) {
+                    showMessage("Password harus memiliki minimal 8 karakter.");
+                    return false;
+                }
+
+                String fullName = name.getText().trim();
+                String emailText = email.getText().trim();
+                String roleText = role.getSelectedItem().toString();
+                String statusText = status.getSelectedItem().toString();
+                String usernameText = username.getText().trim();
+                String passwordText = new String(password.getPassword());
+                int userId = editing ? idFromLabel(model.getValueAt(row, 0).toString(), "USR-") : 0;
+
+                new SwingWorker<Void, Void>() {
+                    protected Void doInBackground() throws Exception {
+                        if (editing) {
+                            Database.updateUser(userId, fullName, emailText, roleText, statusText);
+                        } else {
+                            Database.createUser(fullName, usernameText, emailText, passwordText, roleText, statusText);
+                        }
+                        return null;
+                    }
+                    protected void done() {
+                        try {
+                            get();
+                            loadData();
+                        } catch (Exception ex) {
+                            showMessage("Gagal menyimpan pengguna: " + ex.getMessage());
+                        }
+                    }
+                }.execute();
+                return true;
             });
         }
 
@@ -597,13 +663,21 @@ public class AdminDashboardApp {
             int answer = JOptionPane.showConfirmDialog(frame, "Hapus pengguna ini?", "Konfirmasi",
                     JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                try {
-                    Database.deleteUser(idFromLabel(model.getValueAt(row, 0).toString(), "USR-"));
-                    loadData();
-                    updateStats();
-                } catch (SQLException ex) {
-                    showMessage("Gagal menghapus pengguna: " + ex.getMessage());
-                }
+                int id = idFromLabel(model.getValueAt(row, 0).toString(), "USR-");
+                new SwingWorker<Void, Void>() {
+                    protected Void doInBackground() throws Exception {
+                        Database.deleteUser(id);
+                        return null;
+                    }
+                    protected void done() {
+                        try {
+                            get();
+                            loadData();
+                        } catch (Exception ex) {
+                            showMessage("Gagal menghapus pengguna: " + ex.getMessage());
+                        }
+                    }
+                }.execute();
             }
         }
 
@@ -666,20 +740,28 @@ public class AdminDashboardApp {
         }
 
         void loadData() {
-            model.setRowCount(0);
-            try {
-                for (Order order : Database.getOrders(null)) {
-                    StringBuilder detail = new StringBuilder();
-                    for (CartItem item : order.items) {
-                        if (detail.length() > 0) detail.append(", ");
-                        detail.append(item.book.title).append(" (x").append(item.qty).append(")");
-                    }
-                    model.addRow(new Object[]{order.id, order.customerName, detail.toString(),
-                            rupiah(order.total), order.status, "Aksi"});
+            new SwingWorker<List<Order>, Void>() {
+                protected List<Order> doInBackground() throws Exception {
+                    return Database.getOrders(null);
                 }
-            } catch (SQLException ex) {
-                showMessage("Gagal memuat pesanan: " + ex.getMessage());
-            }
+                protected void done() {
+                    try {
+                        model.setRowCount(0);
+                        for (Order order : get()) {
+                            StringBuilder detail = new StringBuilder();
+                            for (CartItem item : order.items) {
+                                if (detail.length() > 0) detail.append(", ");
+                                detail.append(item.book.title).append(" (x").append(item.qty).append(")");
+                            }
+                            model.addRow(new Object[]{order.id, order.customerName, detail.toString(),
+                                    rupiah(order.total), order.status, "Aksi"});
+                        }
+                        updateStats();
+                    } catch (Exception ex) {
+                        showMessage("Gagal memuat pesanan: " + ex.getMessage());
+                    }
+                }
+            }.execute();
         }
 
         void openOrderDialog(int row) {
@@ -690,6 +772,9 @@ public class AdminDashboardApp {
             if (editing) {
                 customer.setText(model.getValueAt(row, 1).toString());
                 item.setText(model.getValueAt(row, 2).toString());
+                item.setEditable(false);
+                item.setBackground(new Color(245, 245, 245));
+                item.setToolTipText("Detail item pesanan pelanggan terjaga otomatis.");
                 price.setText(model.getValueAt(row, 3).toString().replaceAll("[^0-9]", ""));
                 status.setSelectedItem(model.getValueAt(row, 4).toString());
             }
@@ -708,17 +793,29 @@ public class AdminDashboardApp {
                     if (amount < 0) throw new IllegalArgumentException("Harga tidak boleh negatif.");
 
                     String id = editing ? model.getValueAt(row, 0).toString() : null;
-                    Database.saveAdminOrder(id, customer.getText().trim(), item.getText().trim(),
-                            amount, status.getSelectedItem().toString());
-                    loadData();
-                    updateStats();
+                    String customerName = customer.getText().trim();
+                    String itemText = item.getText().trim();
+                    String statusText = status.getSelectedItem().toString();
+
+                    new SwingWorker<Void, Void>() {
+                        protected Void doInBackground() throws Exception {
+                            Database.saveAdminOrder(id, customerName, itemText, amount, statusText);
+                            return null;
+                        }
+                        protected void done() {
+                            try {
+                                get();
+                                loadData();
+                            } catch (Exception ex) {
+                                showMessage("Gagal menyimpan pesanan: " + ex.getMessage());
+                            }
+                        }
+                    }.execute();
                     return true;
                 } catch (NumberFormatException ex) {
                     showMessage("Total harga harus berupa angka.");
                 } catch (IllegalArgumentException ex) {
                     showMessage(ex.getMessage());
-                } catch (SQLException ex) {
-                    showMessage("Gagal menyimpan pesanan: " + ex.getMessage());
                 }
                 return false;
             });
@@ -728,13 +825,21 @@ public class AdminDashboardApp {
             int answer = JOptionPane.showConfirmDialog(frame, "Hapus pesanan ini?", "Konfirmasi",
                     JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                try {
-                    Database.deleteOrder(model.getValueAt(row, 0).toString());
-                    loadData();
-                    updateStats();
-                } catch (SQLException ex) {
-                    showMessage("Gagal menghapus pesanan: " + ex.getMessage());
-                }
+                String orderId = model.getValueAt(row, 0).toString();
+                new SwingWorker<Void, Void>() {
+                    protected Void doInBackground() throws Exception {
+                        Database.deleteOrder(orderId);
+                        return null;
+                    }
+                    protected void done() {
+                        try {
+                            get();
+                            loadData();
+                        } catch (Exception ex) {
+                            showMessage("Gagal menghapus pesanan: " + ex.getMessage());
+                        }
+                    }
+                }.execute();
             }
         }
 

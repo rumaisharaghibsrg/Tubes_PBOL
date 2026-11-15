@@ -146,20 +146,38 @@ public class BukaBukuApp {
     static void navigateTo(String page, JFrame frame) {
         activeMenu = page;
         if ("Katalog".equals(page)) {
-            try {
-                allBooks = Database.getBooks().toArray(new Book[0]);
-            } catch (SQLException ex) {
-                showDatabaseError(frame, ex);
+            new SwingWorker<List<Book>, Void>() {
+                protected List<Book> doInBackground() throws Exception {
+                    return Database.getBooks();
+                }
+                protected void done() {
+                    try {
+                        allBooks = get().toArray(new Book[0]);
+                        refreshGrids(frame);
+                    } catch (Exception ex) {
+                        showDatabaseError(frame, ex);
+                    }
+                }
+            }.execute();
+        } else if ("Riwayat".equals(page)) {
+            if (currentUser != null) {
+                new SwingWorker<List<Order>, Void>() {
+                    protected List<Order> doInBackground() throws Exception {
+                        return Database.getOrders(currentUser.id);
+                    }
+                    protected void done() {
+                        try {
+                            orderHistory = get();
+                            refreshGrids(frame);
+                        } catch (Exception ex) {
+                            showDatabaseError(frame, ex);
+                        }
+                    }
+                }.execute();
+            } else {
+                refreshGrids(frame);
             }
-        }
-        if ("Riwayat".equals(page) && currentUser != null) {
-            try {
-                orderHistory = Database.getOrders(currentUser.id);
-            } catch (SQLException ex) {
-                showDatabaseError(frame, ex);
-            }
-        }
-        if (page.equals("Katalog") || page.equals("Wishlist") || page.equals("Keranjang") || page.equals("Riwayat")) {
+        } else if (page.equals("Wishlist") || page.equals("Keranjang")) {
             refreshGrids(frame);
         }
         cardLayout.show(cardPanel, page);
@@ -176,6 +194,14 @@ public class BukaBukuApp {
 
         navWishlist.setText(wishlistData.isEmpty() ? "Wishlist" : "Wishlist (" + wishlistData.size() + ")");
         navKeranjang.setText(cartData.isEmpty() ? "Keranjang" : "Keranjang (" + cartData.size() + ")");
+
+        if (currentUser != null) {
+            navLogin.setText("Halo, " + currentUser.fullName);
+            navDaftar.setText("Logout");
+        } else {
+            navLogin.setText("Login");
+            navDaftar.setText("Daftar");
+        }
 
         if (activeMenu.equals("Katalog")) navKatalog.setForeground(COLOR_PINK_SOLID);
         else if (activeMenu.equals("Wishlist")) navWishlist.setForeground(COLOR_PINK_SOLID);
@@ -280,8 +306,9 @@ public class BukaBukuApp {
     }
 
     static void showDatabaseError(Component parent, Exception ex) {
+        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
         JOptionPane.showMessageDialog(parent,
-                "Operasi database tidak berhasil.\n" + ex.getMessage(),
+                "Operasi database tidak berhasil:\n" + cause.getMessage(),
                 "Operasi Database Gagal", JOptionPane.ERROR_MESSAGE);
     }
 
@@ -1039,20 +1066,36 @@ public class BukaBukuApp {
         btnLogin.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         btnLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnLogin.addActionListener(e -> {
-            try {
-                Database.UserAccount user = Database.authenticate(
-                        emailField.getText().trim(), new String(passField.getPassword()));
-                if (user == null) {
-                    showNotificationToast(frame, "Email/username atau password tidak valid.");
-                    return;
-                }
-                currentUser = user;
-                orderHistory = Database.getOrders(user.id);
-                navigateTo("Katalog", frame);
-                showNotificationToast(frame, "Selamat datang, " + user.fullName + "!");
-            } catch (SQLException ex) {
-                showDatabaseError(frame, ex);
+            String loginInput = emailField.getText().trim();
+            String passInput = new String(passField.getPassword());
+            if (loginInput.isEmpty() || passInput.isEmpty()) {
+                showNotificationToast(frame, "Email/username dan password wajib diisi.");
+                return;
             }
+            btnLogin.setEnabled(false);
+            btnLogin.setText("Memproses...");
+            new SwingWorker<Database.UserAccount, Void>() {
+                protected Database.UserAccount doInBackground() throws Exception {
+                    return Database.authenticate(loginInput, passInput);
+                }
+                protected void done() {
+                    btnLogin.setEnabled(true);
+                    btnLogin.setText("Login");
+                    try {
+                        Database.UserAccount user = get();
+                        if (user == null) {
+                            showNotificationToast(frame, "Email/username atau password tidak valid.");
+                            return;
+                        }
+                        currentUser = user;
+                        passField.setText("");
+                        navigateTo("Katalog", frame);
+                        showNotificationToast(frame, "Selamat datang, " + user.fullName + "!");
+                    } catch (Exception ex) {
+                        showDatabaseError(frame, ex);
+                    }
+                }
+            }.execute();
         });
 
         JLabel linkRegister = new JLabel("Belum punya akun? Daftar sekarang.");
@@ -1110,23 +1153,42 @@ public class BukaBukuApp {
         btnDaftar.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         btnDaftar.addActionListener(e -> {
-            if (nameField.getText().trim().isEmpty() || usernameField.getText().trim().isEmpty()
-                    || emailField.getText().trim().isEmpty()) {
+            String nameText = nameField.getText().trim();
+            String userText = usernameField.getText().trim();
+            String emailText = emailField.getText().trim();
+            String passText = new String(passwordField.getPassword());
+
+            if (nameText.isEmpty() || userText.isEmpty() || emailText.isEmpty()) {
                 showNotificationToast(frame, "Nama, username, dan email wajib diisi.");
                 return;
             }
-            if (passwordField.getPassword().length < 8) {
+            if (passText.length() < 8) {
                 showNotificationToast(frame, "Password harus memiliki minimal 8 karakter.");
                 return;
             }
-            try {
-                Database.registerUser(nameField.getText().trim(), usernameField.getText().trim(),
-                        emailField.getText().trim(), new String(passwordField.getPassword()));
-                showNotificationToast(frame, "Pendaftaran berhasil! Silakan login.");
-                navigateTo("Login", frame);
-            } catch (SQLException ex) {
-                showDatabaseError(frame, ex);
-            }
+
+            btnDaftar.setEnabled(false);
+            btnDaftar.setText("Mendaftar...");
+            new SwingWorker<Database.UserAccount, Void>() {
+                protected Database.UserAccount doInBackground() throws Exception {
+                    return Database.registerUser(nameText, userText, emailText, passText);
+                }
+                protected void done() {
+                    btnDaftar.setEnabled(true);
+                    btnDaftar.setText("Buat Akun");
+                    try {
+                        get();
+                        nameField.setText("");
+                        usernameField.setText("");
+                        emailField.setText("");
+                        passwordField.setText("");
+                        showNotificationToast(frame, "Pendaftaran berhasil! Silakan login.");
+                        navigateTo("Login", frame);
+                    } catch (Exception ex) {
+                        showDatabaseError(frame, ex);
+                    }
+                }
+            }.execute();
         });
 
         JLabel linkLogin = new JLabel("Sudah punya akun? Masuk di sini.");
@@ -1192,7 +1254,34 @@ public class BukaBukuApp {
         lbl.setForeground(TEXT_DARK);
         lbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
         lbl.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { navigateTo(text, frame); }
+            public void mouseClicked(MouseEvent e) {
+                if ("Login".equals(text)) {
+                    if (currentUser != null) {
+                        JOptionPane.showMessageDialog(frame,
+                                "Nama: " + currentUser.fullName + "\nUsername: " + currentUser.username
+                                        + "\nEmail: " + currentUser.email + "\nRole: " + currentUser.role,
+                                "Profil Pengguna", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        navigateTo("Login", frame);
+                    }
+                } else if ("Daftar".equals(text)) {
+                    if (currentUser != null) {
+                        int choice = JOptionPane.showConfirmDialog(frame,
+                                "Apakah Anda yakin ingin logout?", "Konfirmasi Logout",
+                                JOptionPane.YES_NO_OPTION);
+                        if (choice == JOptionPane.YES_OPTION) {
+                            currentUser = null;
+                            orderHistory.clear();
+                            showNotificationToast(frame, "Anda telah berhasil logout.");
+                            navigateTo("Katalog", frame);
+                        }
+                    } else {
+                        navigateTo("Daftar", frame);
+                    }
+                } else {
+                    navigateTo(text, frame);
+                }
+            }
         });
         return lbl;
     }
@@ -1425,29 +1514,40 @@ class CheckoutDialog extends JDialog {
         btnPay.setFont(new Font("Segoe UI", Font.BOLD, 15));
         
         btnPay.addActionListener(e -> {
-            if (txtNama.getText().trim().isEmpty() || txtHp.getText().trim().isEmpty()
-                    || txtAlamat.getText().trim().isEmpty()) {
+            String nama = txtNama.getText().trim();
+            String hp = txtHp.getText().trim();
+            String alamat = txtAlamat.getText().trim();
+            String method = String.valueOf(cbMethod.getSelectedItem());
+
+            if (nama.isEmpty() || hp.isEmpty() || alamat.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Mohon lengkapi Nama, Telepon, dan Alamat pengiriman!",
                         "Peringatan", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            try {
-                Order newOrder = Database.createOrder(txtNama.getText().trim(), txtHp.getText().trim(),
-                        txtAlamat.getText().trim(), String.valueOf(cbMethod.getSelectedItem()),
-                        selectedItems, BukaBukuApp.currentUser == null ? null : BukaBukuApp.currentUser.id);
-                BukaBukuApp.orderHistory.add(0, newOrder);
-                BukaBukuApp.cartData.removeAll(selectedItems);
-                for (CartItem item : selectedItems) item.book.stock -= item.qty;
-            } catch (SQLException ex) {
-                BukaBukuApp.showDatabaseError(parent, ex);
-                return;
-            }
-
-            dispose();
-            
-            BukaBukuApp.showNotificationToast(parent, "Pesanan tersimpan dan menunggu diproses.");
-            BukaBukuApp.navigateTo("Riwayat", parent);
+            btnPay.setEnabled(false);
+            btnPay.setText("Memproses Pesanan...");
+            new SwingWorker<Order, Void>() {
+                protected Order doInBackground() throws Exception {
+                    return Database.createOrder(nama, hp, alamat, method, selectedItems,
+                            BukaBukuApp.currentUser == null ? null : BukaBukuApp.currentUser.id);
+                }
+                protected void done() {
+                    btnPay.setEnabled(true);
+                    btnPay.setText("Konfirmasi & Bayar Sekarang");
+                    try {
+                        Order newOrder = get();
+                        BukaBukuApp.orderHistory.add(0, newOrder);
+                        BukaBukuApp.cartData.removeAll(selectedItems);
+                        for (CartItem item : selectedItems) item.book.stock -= item.qty;
+                        dispose();
+                        BukaBukuApp.showNotificationToast(parent, "Pesanan tersimpan dan menunggu diproses.");
+                        BukaBukuApp.navigateTo("Riwayat", parent);
+                    } catch (Exception ex) {
+                        BukaBukuApp.showDatabaseError(parent, ex);
+                    }
+                }
+            }.execute();
         });
 
         mainCard.add(header, BorderLayout.NORTH);
