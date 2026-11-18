@@ -62,6 +62,22 @@ final class Database {
                     + "title VARCHAR(255) NOT NULL, quantity INT NOT NULL,"
                     + "unit_price BIGINT NOT NULL,"
                     + "CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS wishlist ("
+                    + "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,"
+                    + "user_id BIGINT NOT NULL, book_id BIGINT NOT NULL,"
+                    + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                    + "CONSTRAINT uq_wishlist_user_book UNIQUE (user_id, book_id),"
+                    + "CONSTRAINT fk_wishlist_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,"
+                    + "CONSTRAINT fk_wishlist_book FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS cart_items ("
+                    + "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,"
+                    + "user_id BIGINT NOT NULL, book_id BIGINT NOT NULL,"
+                    + "quantity INT NOT NULL DEFAULT 1,"
+                    + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                    + "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                    + "CONSTRAINT uq_cart_user_book UNIQUE (user_id, book_id),"
+                    + "CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,"
+                    + "CONSTRAINT fk_cart_book FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE)");
         }
         seedBooks();
     }
@@ -166,6 +182,16 @@ final class Database {
                         "UPDATE order_items SET book_id=NULL WHERE book_id=?")) {
                     updateItems.setInt(1, id);
                     updateItems.executeUpdate();
+                }
+                try (PreparedStatement delWishlist = connection.prepareStatement(
+                        "DELETE FROM wishlist WHERE book_id=?")) {
+                    delWishlist.setInt(1, id);
+                    delWishlist.executeUpdate();
+                }
+                try (PreparedStatement delCart = connection.prepareStatement(
+                        "DELETE FROM cart_items WHERE book_id=?")) {
+                    delCart.setInt(1, id);
+                    delCart.executeUpdate();
                 }
                 try (PreparedStatement delete = connection.prepareStatement("DELETE FROM books WHERE id=?")) {
                     delete.setInt(1, id);
@@ -446,6 +472,16 @@ final class Database {
                         insertItem.executeUpdate();
                     }
                 }
+                if (userId != null) {
+                    for (CartItem item : items) {
+                        try (PreparedStatement delCart = connection.prepareStatement(
+                                "DELETE FROM cart_items WHERE user_id=? AND book_id=?")) {
+                            delCart.setInt(1, userId);
+                            delCart.setInt(2, item.book.id);
+                            delCart.executeUpdate();
+                        }
+                    }
+                }
                 connection.commit();
                 return new Order(orderNumber((int) orderId),
                         new java.text.SimpleDateFormat("d MMMM yyyy 'pukul' HH.mm",
@@ -587,5 +623,92 @@ final class Database {
 
     static String orderNumber(int id) {
         return String.format("ORD-%03d", id);
+    }
+
+    // ================== WISHLIST OPERATIONS ==================
+    static List<Book> getWishlist(int userId) throws SQLException {
+        List<Book> list = new ArrayList<>();
+        String sql = "SELECT b.id, b.title, b.author, b.category, b.price, b.image_path, b.description, b.stock "
+                + "FROM wishlist w JOIN books b ON w.book_id = b.id "
+                + "WHERE w.user_id = ? ORDER BY w.id DESC";
+        try (Connection connection = connect(); PreparedStatement query = connection.prepareStatement(sql)) {
+            query.setInt(1, userId);
+            try (ResultSet rows = query.executeQuery()) {
+                while (rows.next()) {
+                    list.add(new Book(rows.getInt("id"), rows.getString("title"), rows.getString("author"),
+                            rows.getString("category"), rows.getInt("price"), rows.getString("image_path"),
+                            rows.getString("description"), rows.getInt("stock")));
+                }
+            }
+        }
+        return list;
+    }
+
+    static void addToWishlist(int userId, int bookId) throws SQLException {
+        String sql = "INSERT INTO wishlist (user_id, book_id) VALUES (?, ?) "
+                + "ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP";
+        try (Connection connection = connect(); PreparedStatement insert = connection.prepareStatement(sql)) {
+            insert.setInt(1, userId);
+            insert.setInt(2, bookId);
+            insert.executeUpdate();
+        }
+    }
+
+    static void removeFromWishlist(int userId, int bookId) throws SQLException {
+        String sql = "DELETE FROM wishlist WHERE user_id = ? AND book_id = ?";
+        try (Connection connection = connect(); PreparedStatement delete = connection.prepareStatement(sql)) {
+            delete.setInt(1, userId);
+            delete.setInt(2, bookId);
+            delete.executeUpdate();
+        }
+    }
+
+    // ================== CART OPERATIONS ==================
+    static List<CartItem> getCart(int userId) throws SQLException {
+        List<CartItem> list = new ArrayList<>();
+        String sql = "SELECT c.quantity, b.id, b.title, b.author, b.category, b.price, b.image_path, b.description, b.stock "
+                + "FROM cart_items c JOIN books b ON c.book_id = b.id "
+                + "WHERE c.user_id = ? ORDER BY c.id ASC";
+        try (Connection connection = connect(); PreparedStatement query = connection.prepareStatement(sql)) {
+            query.setInt(1, userId);
+            try (ResultSet rows = query.executeQuery()) {
+                while (rows.next()) {
+                    Book book = new Book(rows.getInt("id"), rows.getString("title"), rows.getString("author"),
+                            rows.getString("category"), rows.getInt("price"), rows.getString("image_path"),
+                            rows.getString("description"), rows.getInt("stock"));
+                    list.add(new CartItem(book, rows.getInt("quantity")));
+                }
+            }
+        }
+        return list;
+    }
+
+    static void saveOrUpdateCartItem(int userId, int bookId, int quantity) throws SQLException {
+        String sql = "INSERT INTO cart_items (user_id, book_id, quantity) VALUES (?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE quantity = ?";
+        try (Connection connection = connect(); PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, bookId);
+            stmt.setInt(3, quantity);
+            stmt.setInt(4, quantity);
+            stmt.executeUpdate();
+        }
+    }
+
+    static void removeFromCart(int userId, int bookId) throws SQLException {
+        String sql = "DELETE FROM cart_items WHERE user_id = ? AND book_id = ?";
+        try (Connection connection = connect(); PreparedStatement delete = connection.prepareStatement(sql)) {
+            delete.setInt(1, userId);
+            delete.setInt(2, bookId);
+            delete.executeUpdate();
+        }
+    }
+
+    static void clearCart(int userId) throws SQLException {
+        String sql = "DELETE FROM cart_items WHERE user_id = ?";
+        try (Connection connection = connect(); PreparedStatement delete = connection.prepareStatement(sql)) {
+            delete.setInt(1, userId);
+            delete.executeUpdate();
+        }
     }
 }
