@@ -54,7 +54,15 @@ public class BukaBukuApp {
 
     static void initData() throws SQLException {
         allBooks = Database.getBooks().toArray(new Book[0]);
-        orderHistory = currentUser == null ? new ArrayList<>() : Database.getOrders(currentUser.id);
+        if (currentUser != null) {
+            orderHistory = Database.getOrders(currentUser.id);
+            wishlistData = Database.getWishlist(currentUser.id);
+            cartData = Database.getCart(currentUser.id);
+        } else {
+            orderHistory = new ArrayList<>();
+            wishlistData = new ArrayList<>();
+            cartData = new ArrayList<>();
+        }
     }
 
     static void createAndShowGUI() {
@@ -177,8 +185,44 @@ public class BukaBukuApp {
             } else {
                 refreshGrids(frame);
             }
-        } else if (page.equals("Wishlist") || page.equals("Keranjang")) {
-            refreshGrids(frame);
+        } else if ("Wishlist".equals(page)) {
+            if (currentUser != null) {
+                new SwingWorker<List<Book>, Void>() {
+                    protected List<Book> doInBackground() throws Exception {
+                        return Database.getWishlist(currentUser.id);
+                    }
+                    protected void done() {
+                        try {
+                            wishlistData = get();
+                            refreshGrids(frame);
+                            updateNavbar();
+                        } catch (Exception ex) {
+                            showDatabaseError(frame, ex);
+                        }
+                    }
+                }.execute();
+            } else {
+                refreshGrids(frame);
+            }
+        } else if ("Keranjang".equals(page)) {
+            if (currentUser != null) {
+                new SwingWorker<List<CartItem>, Void>() {
+                    protected List<CartItem> doInBackground() throws Exception {
+                        return Database.getCart(currentUser.id);
+                    }
+                    protected void done() {
+                        try {
+                            cartData = get();
+                            refreshGrids(frame);
+                            updateNavbar();
+                        } catch (Exception ex) {
+                            showDatabaseError(frame, ex);
+                        }
+                    }
+                }.execute();
+            } else {
+                refreshGrids(frame);
+            }
         }
         cardLayout.show(cardPanel, page);
         updateNavbar();
@@ -298,9 +342,23 @@ public class BukaBukuApp {
             showNotificationToast(frame, "Stok buku tidak mencukupi.");
             return;
         }
-        if (existing == null) cartData.add(new CartItem(book, 1));
-        else existing.qty++;
-        
+        final int targetQty;
+        if (existing == null) {
+            existing = new CartItem(book, 1);
+            cartData.add(existing);
+            targetQty = 1;
+        } else {
+            existing.qty++;
+            targetQty = existing.qty;
+        }
+        if (currentUser != null) {
+            new SwingWorker<Void, Void>() {
+                protected Void doInBackground() throws Exception {
+                    Database.saveOrUpdateCartItem(currentUser.id, book.id, targetQty);
+                    return null;
+                }
+            }.execute();
+        }
         showNotificationToast(frame, book.title + " berhasil masuk keranjang!");
         updateNavbar();
     }
@@ -770,6 +828,15 @@ public class BukaBukuApp {
         btnMin.addActionListener(e -> {
             if (item.qty > 1) { 
                 item.qty--; 
+                final int q = item.qty;
+                if (currentUser != null) {
+                    new SwingWorker<Void, Void>() {
+                        protected Void doInBackground() throws Exception {
+                            Database.saveOrUpdateCartItem(currentUser.id, item.book.id, q);
+                            return null;
+                        }
+                    }.execute();
+                }
                 lblQty.setText(String.valueOf(item.qty)); 
                 subtotal.setText("<html><div style='text-align: right;'><span style='font-size:10px;color:gray;'>Subtotal</span><br/><b>" + 
                                  String.format("Rp %,d", item.book.price * item.qty).replace(',', '.') + "</b></div></html>");
@@ -783,6 +850,15 @@ public class BukaBukuApp {
                 return;
             }
             item.qty++; 
+            final int q = item.qty;
+            if (currentUser != null) {
+                new SwingWorker<Void, Void>() {
+                    protected Void doInBackground() throws Exception {
+                        Database.saveOrUpdateCartItem(currentUser.id, item.book.id, q);
+                        return null;
+                    }
+                }.execute();
+            }
             lblQty.setText(String.valueOf(item.qty)); 
             subtotal.setText("<html><div style='text-align: right;'><span style='font-size:10px;color:gray;'>Subtotal</span><br/><b>" + 
                              String.format("Rp %,d", item.book.price * item.qty).replace(',', '.') + "</b></div></html>");
@@ -791,6 +867,14 @@ public class BukaBukuApp {
 
         btnDel.addActionListener(e -> {
             cartData.remove(item);
+            if (currentUser != null) {
+                new SwingWorker<Void, Void>() {
+                    protected Void doInBackground() throws Exception {
+                        Database.removeFromCart(currentUser.id, item.book.id);
+                        return null;
+                    }
+                }.execute();
+            }
             refreshGrids(frame);
             updateNavbar();
         });
@@ -996,9 +1080,25 @@ public class BukaBukuApp {
             public void mouseClicked(MouseEvent e) {
                 if (wishlistData.contains(book)) {
                     wishlistData.remove(book);
+                    if (currentUser != null) {
+                        new SwingWorker<Void, Void>() {
+                            protected Void doInBackground() throws Exception {
+                                Database.removeFromWishlist(currentUser.id, book.id);
+                                return null;
+                            }
+                        }.execute();
+                    }
                     showNotificationToast(parentFrame, "Dihapus dari Wishlist");
                 } else {
                     wishlistData.add(book);
+                    if (currentUser != null) {
+                        new SwingWorker<Void, Void>() {
+                            protected Void doInBackground() throws Exception {
+                                Database.addToWishlist(currentUser.id, book.id);
+                                return null;
+                            }
+                        }.execute();
+                    }
                     showNotificationToast(parentFrame, "Ditambahkan ke Wishlist!");
                 }
                 refreshGrids(parentFrame);
@@ -1089,8 +1189,41 @@ public class BukaBukuApp {
                         }
                         currentUser = user;
                         passField.setText("");
-                        navigateTo("Katalog", frame);
-                        showNotificationToast(frame, "Selamat datang, " + user.fullName + "!");
+
+                        new SwingWorker<Void, Void>() {
+                            protected Void doInBackground() throws Exception {
+                                List<Book> dbWishlist = Database.getWishlist(user.id);
+                                List<CartItem> dbCart = Database.getCart(user.id);
+                                for (Book wb : wishlistData) {
+                                    if (!dbWishlist.contains(wb)) {
+                                        Database.addToWishlist(user.id, wb.id);
+                                        dbWishlist.add(wb);
+                                    }
+                                }
+                                for (CartItem ci : cartData) {
+                                    boolean exists = false;
+                                    for (CartItem dci : dbCart) {
+                                        if (dci.book.id == ci.book.id) {
+                                            exists = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!exists) {
+                                        Database.saveOrUpdateCartItem(user.id, ci.book.id, ci.qty);
+                                        dbCart.add(ci);
+                                    }
+                                }
+                                wishlistData = dbWishlist;
+                                cartData = dbCart;
+                                orderHistory = Database.getOrders(user.id);
+                                return null;
+                            }
+                            protected void done() {
+                                navigateTo("Katalog", frame);
+                                updateNavbar();
+                                showNotificationToast(frame, "Selamat datang, " + user.fullName + "!");
+                            }
+                        }.execute();
                     } catch (Exception ex) {
                         showDatabaseError(frame, ex);
                     }
@@ -1272,8 +1405,11 @@ public class BukaBukuApp {
                         if (choice == JOptionPane.YES_OPTION) {
                             currentUser = null;
                             orderHistory.clear();
+                            wishlistData.clear();
+                            cartData.clear();
                             showNotificationToast(frame, "Anda telah berhasil logout.");
                             navigateTo("Katalog", frame);
+                            updateNavbar();
                         }
                     } else {
                         navigateTo("Daftar", frame);
